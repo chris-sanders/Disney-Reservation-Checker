@@ -1,12 +1,15 @@
 # python 3.5
 
+import os
+import json
+import time as TIME
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-import json
-import os
+
 import smtplib
 
 # These variables will be used for Texting services
@@ -106,15 +109,16 @@ def get_availability(r_list, driver):
             TIME.sleep(1) # full sleep because the python program is going faster than the website can handle
             try:
                 element = WebDriverWait(driver, TIMEOUT).until(EC.element_to_be_clickable(
-                    (By.XPATH,'//*[@id="diningAvailabilityForm-searchDateid-base"]/div/button')))
+                    (By.XPATH,'//button[contains(@class, "finder-button primary ng-star-inserted")]')))
             except:
                 print("couldn't load page")
                 continue
 
 
             # open the calender
-            elm = driver.find_element(By.XPATH, '//*[@id="diningAvailabilityForm-searchDateid-base"]/div/button')
+            elm = driver.find_element(By.XPATH, '//button[contains(@class, "finder-button primary ng-star-inserted")]')
             elm.click()
+            TIME.sleep(1) # full sleep because the python program is going faster than the website can handle
             # get the month at the top of the calender
             elm = driver.find_element(By.XPATH, '//*[@id="ui-datepicker-div"]/div/div/span[1]')
             # until we have the correct month we click the next month
