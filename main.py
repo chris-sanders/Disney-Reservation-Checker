@@ -1,7 +1,4 @@
 # python 3.5
-# TODO: set up logging
-from twilio.rest import Client
-
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -10,15 +7,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import json
 import os
-import threading
-import time as TIME
+import smtplib
 
 # These variables will be used for Texting services
 TIMEOUT = 10
-account_sid  = None
-auth_token = None
-twilio_number = None
-to_numbers = None
 
 
 # a dictionary to convert numeric date into phonetic form
@@ -82,37 +74,6 @@ class Restaurant:
         self.name = name
         self.reservations = reservations
         self.link = link
-
-
-
-def get_settings():
-    """Sets up the variables that Twilio Api needs to send a text message
-    """
-
-    # check for the accounts.json file if not found we cannot continue the program
-    if os.path.isfile("accounts.json"):
-        json_data = open("accounts.json").read()
-        data = json.loads(json_data)
-    else:
-        raise Exception("No 'accounts.json' file found")
-        # crash the program
-
-
-    if data["to_phone_number"]:
-        global to_numbers
-        to_numbers = data["to_phone_number"]
-
-    if data['account_sid'] and data['auth_token'] and data['twilio_number']:
-        global account_sid
-        global auth_token
-        global twilio_number
-        account_sid = data['account_sid']
-        auth_token = data['auth_token']
-        twilio_number = data['twilio_number']
-    else:
-        # if there is any missind data we need to throw an exception and end the program
-        Exception("Missing Arguments in 'accounts.json,' please include account_sid, auth_token, and twilio_number")
-
 
 
 def get_availability(r_list, driver):
@@ -228,22 +189,6 @@ def get_availability(r_list, driver):
 
     return results
 
-def send_text(body, number):
-    """A wrapper function to send texts to one user
-    
-    send_text sends a message to a single user
-    Args:
-        body (str): The message to send
-        number (str): Phone number to send to
-    Returns:
-        None
-        
-    """
-    client = Client(account_sid, auth_token)
-    message = client.api.account.messages.create(to=number,
-                                                 from_=twilio_number,
-                                                 body=body)
-
 def send_alerts(alert_list):
     """A function for sending text alerts of Restaurants availability
 
@@ -276,16 +221,19 @@ def send_alerts(alert_list):
         body += "\n For: "
         body += alert.party
 
-
-        # support for multiple numbers
-        for x in to_numbers:
-            send_text(body, x)
-
+    try:
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(os.environ.get('EMAIL'), os.environ.get('EMAIL_PASSWORD'))
+        server.sendmail(os.environ.get('EMAIL'), ["8016691177@vtext.com", "8014718540@vtext.com"], body)
+    except smtplib.SMTPException:
+        print("Error: unable to send:\n" + alert_list)
+    finally:
+        server.quit()
 
 
 def main():
     # threading to make sure the function is running every 5 minutes
-    threading.Timer(60.0 * 5, main).start()
+    # threading.Timer(60.0 * 5, main).start()
     restaurant_list = []
 
     # get restaurants
@@ -319,13 +267,16 @@ def main():
 
     try:
         alerts = get_availability(restaurant_list, driver)
+        print(alerts)
         send_alerts(alerts)
+        print("Alerts Sent")
+    except smtplib.SMTPException:
+        print("Error: unable to send:\n" + alerts)
     finally:
         driver.close() # close the window
 
 
 if __name__ == "__main__":
-    get_settings()  # set global variables for texting service
     main()
 
 
