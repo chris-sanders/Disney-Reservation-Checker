@@ -2,7 +2,7 @@
 	"places": [
 		{
 			"name": "Be Our Guest",
-			"link": "https://disneyworld.disney.go.com/dining/magic-kingdom/be-our-guest-restaurant/",
+			"link": "https://disneyworld.disney.go.com/login/?returnUrl=/dining/magic-kingdom/be-our-guest-restaurant/availability-modal",
 
 			"reservations": [
 				{
@@ -19,7 +19,7 @@
 		},
 		{
 			"name": "Rainforest Cafe",
-			"link": "https://disneyworld.disney.go.com/shops/disney-springs/rainforest-cafe-retail-village/",
+			"link": "https://disneyworld.disney.go.com/login/?returnUrl=/dining/disney-springs/rainforest-cafe-disney-springs/availability-modal",
 
 			"reservations": [
 				{
