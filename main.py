@@ -1,24 +1,28 @@
-# python 3.5
+# python 3.9
 
-import os
-import json
-import time
 from datetime import datetime
+import json
+import os
+import sys
+import traceback
+from time import sleep
 
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
 import smtplib
+from selenium.common.exceptions import TimeoutException
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
 
 # These variables will be used for Texting services
 TIMEOUT = 10
 BASE_URL = 'https://disneyworld.disney.go.com'
 
-EMAIL = os.environ.get('EMAIL')
-EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
-DISNEY_PASSWORD = os.environ.get('DISNEY_PASSWORD')
+# TODO validate secrets
+EMAIL_USERNAME = os.getenv('EMAIL_USERNAME')
+EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
+DISNEY_USERNAME = os.getenv('DISNEY_USERNAME')
+DISNEY_PASSWORD = os.getenv('DISNEY_PASSWORD')
 
 # a dictionary to convert numeric month into phonetic form
 MONTH_MAP = {1: "January", 2: "February", 3: "March", 4: "April", 5: "May",
@@ -37,11 +41,10 @@ class Alert:
         times (:obj: `list`): List of available times that were found via webscraping. Default value is an empty list
     
     """
-    def __init__(self, restaurant_name, date, party, times = [] ):
+    def __init__(self, restaurant_name, date, times = [] ):
         self.restaurant_name = restaurant_name
         self.times = times
         self.date = date
-        self.party = party
 
 
 class Reservation:
@@ -57,9 +60,8 @@ class Reservation:
     
     
     """
-    def __init__(self, time, date, party):
+    def __init__(self, time, date):
         self.time = time
-        self.party = party
         self.date = date
 
 
@@ -89,15 +91,15 @@ def login(driver):
 
     try:
         emailField = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-            By.XPATH,'//*[@id="loginPageUsername"]')))
+            By.ID,'loginPageUsername')))
     except:
         print('failed to login')
         return []
 
-    emailField.send_keys(EMAIL)
-    passwordField = driver.find_element(By.XPATH, '//*[@id="loginPagePassword"]')
+    emailField.send_keys(DISNEY_USERNAME)
+    passwordField = driver.find_element_by_id('loginPagePassword')
     passwordField.send_keys(DISNEY_PASSWORD)
-    signin_button = driver.find_element(By.XPATH, '//*[@id="loginPageSubmitButton"]')
+    signin_button = driver.find_element_by_id('loginPageSubmitButton')
     signin_button.click()
 
     WebDriverWait(driver, TIMEOUT).until(lambda driver: driver.current_url == f'{BASE_URL}/')
@@ -128,10 +130,11 @@ def get_availability(r_list, driver):
                 day = int(split_date[1])
 
                 root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-                    By.XPATH,'//finder-availability-modal')))
+                    By.XPATH, '//finder-availability-modal')))
                     
                 # open calendar
-                calendar_button = root.find_element(By.XPATH, './/button[@class="calendar-button"]')
+                calendar_button = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((
+                    By.XPATH, './/button[@class="calendar-button"]')))
                 calendar_button.click()
 
                 months_diff = month - datetime.today().month
@@ -145,7 +148,7 @@ def get_availability(r_list, driver):
                     continue
 
                 # click next month a number of times based on months_diff
-                for i in range(months_diff):
+                for _ in range(months_diff):
                     next_month_icon = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((
                         By.XPATH, './/*[@class="arrow-next header-cell ng-star-inserted"]')))
                     next_month_icon.click()
@@ -154,61 +157,38 @@ def get_availability(r_list, driver):
                     By.XPATH, f'.//*[text()="{MONTH_MAP[month]}"]')))
                 
                 # select date
-                day_section = root.find_element(By.XPATH, f'.//*[text()=" {day} "]')
+                day_section = root.find_element_by_xpath(f'.//*[text()=" {day} "]')
                 day_section.click()
 
                 # # get time dropdown's #shadow-root
-                # time_dropdown_wrapper = root.find_element(By.XPATH, './/wdpr-single-select')
-                # time_dropdown_root = expand_shadow_element(driver, time_dropdown_wrapper)
-                # time_dropdown = time_dropdown_root.find_element(By.XPATH, './/button[@id="custom-dropdown-button"]')
-                # time_dropdown.click()
+                time_dropdown_wrapper = root.find_element_by_xpath('.//wdpr-single-select')
+                time_dropdown_root = expand_shadow_element(driver, time_dropdown_wrapper)
+                time_dropdown = time_dropdown_root.find_element_by_id('custom-dropdown-button')
+                time_dropdown.click()
 
-                # root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-                #     By.XPATH,'//finder-availability-modal')))
+                # no easy way to wait for an element in #shadow-root to be visible
+                sleep(1) 
+                dropdown_elements = time_dropdown_root.find_elements_by_class_name('option-value-inner')
+                for dropdown_element in dropdown_elements:
+                    if reservation.time in dropdown_element.text:
+                        dropdown_element.click()
+                        break
 
-                search_button = root.find_element(By.XPATH, './/finder-button')
+                search_button = root.find_element_by_xpath('.//finder-button')
                 search_button.click()
 
-                time.sleep(5)
+                WebDriverWait(root, TIMEOUT).until(EC.presence_of_element_located((
+                    By.XPATH, f'.//*[text()="Reserve a table at"]')))
+
+                reservation_times = root.find_elements_by_xpath('.//*[@class="finder-button secondary ng-star-inserted"]')
+                times = []
+                for reservation_time in reservation_times:
+                    times.append(reservation_time.text)
+                results.append(Alert(restaurant.name, reservation.date, times))
                 
-        except RuntimeError:
-            print(f'failed to check reservations for {restaurant.name}')
-
-        #     try:
-        #         time.sleep(1)
-        #         elm = WebDriverWait(driver, TIMEOUT).until(EC.visibility_of_element_located((By.XPATH, '//*[@data-display="' +reservation.time+'"]')))
-        #         elm.click()
-        #     except TimeoutException:
-        #         print("Can't find reservation time")
-        #     # click on dropdown for party size
-        #     elm = driver.find_element(By.XPATH, '//*[@id="partySize-wrapper"]/div[1]')
-        #     elm.click()
-        #     # find element for party and click
-        #     try:
-        #         time.sleep(1) # full sleep because the python program is going faster than the website can handle
-        #         elm = WebDriverWait(driver, TIMEOUT).until(EC.element_to_be_clickable((By.XPATH, '//*[@data-value="'+reservation.party+'" and @role="option"]')))
-        #         elm.click()
-        #     except TimeoutException:
-        #         print("can't select party size")
-
-        #     # click submit and search
-        #     elm = driver.find_element(By.XPATH, '//*[@id="dineAvailSearchButton"]')
-        #     elm.click()
-
-        #     try:
-        #         # search by class name
-        #         driver.implicitly_wait(2)# needed to call sleep here, some issues on windows version on chrome
-        #         elm = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((By.CLASS_NAME, 'availableTime')))
-        #         elm = driver.find_elements(By.CLASS_NAME, 'availableTime')
-
-        #         times = []
-        #         for e in elm:
-        #             times.append(e.text)
-
-        #         alert = Alert(restaurant.name, reservation.date, reservation.party, times)
-        #         results.append(alert)
-        #     except TimeoutException:
-        #         print("waiting too long for element/no reservation")
+        except:
+            print(f'failed to check reservations for {restaurant.name} for {reservation.time} on {reservation.date}')
+            traceback.print_exc()
 
     return results
 
@@ -227,44 +207,36 @@ def send_alerts(alert_list):
     # no alerts to be sent
     if alert_list is []:
         return
+    
+    server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+    server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
 
-    header="\nThere is a reservation open for:\n"
-
-    # TODO: look into list comprehensions to simiplify
     for alert in alert_list:
-        body = ""
-        body += header
-        body += alert.restaurant_name +" \n"
-        body += " at: "
+        message = f'\n{alert.restaurant_name} has reservations open for '
 
         for time in alert.times:
-            body += " " + time
-        body += "\n on Date: "
-        body += alert.date
-        body += "\n For: "
-        body += alert.party
+            message += f'{time} '
+        message += "on "
+        message += alert.date
 
-    try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(os.environ.get('EMAIL'), os.environ.get('EMAIL_PASSWORD'))
-        server.sendmail(os.environ.get('EMAIL'), ["8016691177@vtext.com", "8014718540@vtext.com"], body)
-    except smtplib.SMTPException:
-        print("Error: unable to send:\n" + alert_list)
-    finally:
-        server.quit()
+        try:
+            server.sendmail(EMAIL_USERNAME, ["8014718540@vtext.com", "8016691177@vtext.com"], message)
+        except:
+            print("Error: unable to send:\n" + message)
 
+    server.quit()    
+    print("Alerts Sent")
 
 def main():
-    # threading to make sure the function is running every 5 minutes
-    # threading.Timer(60.0 * 5, main).start()
-    restaurant_list = []
+    if EMAIL_USERNAME is None or EMAIL_PASSWORD is None or EMAIL_USERNAME is None or DISNEY_PASSWORD is None:
+        print("Missing required credentials in environment variables")
+        sys.exit(1)
 
-    # get restaurants
-    # process in file
     infile = open("places.json", "r")
-
     data = json.load(infile)
+    infile.close()
 
+    restaurant_list = []
     # parse data and convert to objects
     for x in data["places"]:
         name = x["name"]
@@ -275,35 +247,17 @@ def main():
         for y in x["reservations"]:
             time = y["time"]
             date = y["date"]
-            party= y["party"]
-
-            res = Reservation(time, date, party)
-
+            res = Reservation(time, date)
             reservation_list.append(res)
 
         restaurant_list.append(Restaurant(name, link, reservation_list ))
 
-    # close file
-    infile.close()
-
     driver = webdriver.Chrome()
-
     login(driver)
     alerts = get_availability(restaurant_list, driver)
-    print(alerts)
+    driver.close()
 
-    try:
-        # send_alerts(alerts)
-        print("Alerts Sent")
-    except smtplib.SMTPException:
-        print("Error: unable to send:\n" + alerts)
-    finally:
-        driver.close() # close the window
-
+    send_alerts(alerts)
 
 if __name__ == "__main__":
     main()
-
-
-
-
