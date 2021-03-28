@@ -3,6 +3,7 @@
 import os
 import json
 import time
+from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -13,13 +14,16 @@ import smtplib
 
 # These variables will be used for Texting services
 TIMEOUT = 10
+BASE_URL = 'https://disneyworld.disney.go.com'
 
+EMAIL = os.environ.get('EMAIL')
+EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+DISNEY_PASSWORD = os.environ.get('DISNEY_PASSWORD')
 
-# a dictionary to convert numeric date into phonetic form
-date_day = {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May",
-            "06": "June", "07": "July", "08": "August", "09": "September", "10": "October",
-            "11": "November", "12": "December"}
-
+# a dictionary to convert numeric month into phonetic form
+MONTH_MAP = {1: "January", 2: "February", 3: "March", 4: "April", 5: "May",
+            6: "June", 7: "July", 8: "August", 9: "September", 10: "October",
+            11: "November", 12: "December"}
 
 class Alert:
     """An Object Representation of a Text Alert
@@ -77,6 +81,26 @@ class Restaurant:
         self.reservations = reservations
         self.link = link
 
+def expand_shadow_element(driver, element):
+    return driver.execute_script('return arguments[0].shadowRoot', element)
+
+def login(driver):
+    driver.get(f'{BASE_URL}/login')
+
+    try:
+        emailField = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+            By.XPATH,'//*[@id="loginPageUsername"]')))
+    except:
+        print('failed to login')
+        return []
+
+    emailField.send_keys(EMAIL)
+    passwordField = driver.find_element(By.XPATH, '//*[@id="loginPagePassword"]')
+    passwordField.send_keys(DISNEY_PASSWORD)
+    signin_button = driver.find_element(By.XPATH, '//*[@id="loginPageSubmitButton"]')
+    signin_button.click()
+
+    WebDriverWait(driver, TIMEOUT).until(lambda driver: driver.current_url == f'{BASE_URL}/')
 
 def get_availability(r_list, driver):
     """A function for returning a list of Alerts of Restaurants availability
@@ -92,114 +116,101 @@ def get_availability(r_list, driver):
 
     """
 
-    driver.get('https://disneyworld.disney.go.com/login')
+    results = []
+    for restaurant in r_list:
+        driver.get(restaurant.link)
+        try:
+            for reservation in restaurant.reservations:
+                # TODO (epoole) we need to sort reservations if we aren't refreshing the page constantly
 
-    # problems consistently loading, sleeping to let the page load
-    time.sleep(1) # full sleep because the python program is going faster than the website can handle
-    try:
-        emailField = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located(
-            (By.XPATH,'//*[@id="loginPageUsername"]')))
-    except:
-        print("couldn't login")
-        return []
+                split_date = reservation.date.split('/')
+                month = int(split_date[0])
+                day = int(split_date[1])
 
-    emailField.send_keys(os.environ.get('EMAIL'))
-    passwordField = driver.find_element(By.XPATH, '//*[@id="loginPagePassword"]')
-    emailField.send_keys(os.environ.get('DISNEY_PASSWORD'))
-    signin_button = driver.find_element(By.XPATH, '//*[@id="loginPageSubmitButton"]')
-    signin_button.click()
+                root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+                    By.XPATH,'//finder-availability-modal')))
+                    
+                # open calendar
+                calendar_button = root.find_element(By.XPATH, './/button[@class="calendar-button"]')
+                calendar_button.click()
 
-    time.sleep(10)
+                months_diff = month - datetime.today().month
+                if months_diff < 0:
+                    months_diff += 12
 
-    # results = []
-    # # get restaurant
-    # for restaurant in r_list:
-    #     driver.get(restaurant.link)
+                # todo break this into a validation step before selenium
+                # reservations can be made only up to two months in advance
+                if months_diff > 2:
+                    print(f'invalid reservation date requested - {reservation.date}; reservations can only be made up to 60 days in advance')
+                    continue
 
-        # get reservation
-        # for reservation in restaurant.reservations:
-            # # get day and date as numbers
-            # arr = reservation.date.split('/')
-            # # turn numeric date to text
-            # month = date_day[arr[0]]
-            # day = arr[1]
+                # click next month a number of times based on months_diff
+                for i in range(months_diff):
+                    next_month_icon = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((
+                        By.XPATH, './/*[@class="arrow-next header-cell ng-star-inserted"]')))
+                    next_month_icon.click()
 
-    #         # open the calender
-    #         elm = driver.find_element(By.XPATH, '//*[@id="diningAvailabilityForm-searchDateid-base"]/div/button')
-    #         elm.click()
-    #         # get the month at the top of the calender
-    #         elm = driver.find_element(By.XPATH, '//*[@id="ui-datepicker-div"]/div/div/span[1]')
-    #         # until we have the correct month we click the next month
-    #         counter = 0
-    #         while(elm.text.lower() != month.lower()):
+                WebDriverWait(root, TIMEOUT).until(EC.presence_of_element_located((
+                    By.XPATH, f'.//*[text()="{MONTH_MAP[month]}"]')))
+                
+                # select date
+                day_section = root.find_element(By.XPATH, f'.//*[text()=" {day} "]')
+                day_section.click()
 
-    #             # reservations can't be made more than 6 months in advanced
-    #             # the program is getting stuck and sometimes missing the proper month
-    #             if counter > 6:
-    #                 break
-    #             try:
-    #                 elm = WebDriverWait(driver, TIMEOUT).until(
-    #                     EC.element_to_be_clickable((By.XPATH, '//*[@id="ui-datepicker-div"]/div/a[2]')))
-    #             except TimeoutException:
-    #                 print("Couldn't click next on calender")
-    #                 continue
-    #             elm = driver.find_element(By.XPATH, '//*[@id="ui-datepicker-div"]/div/a[2]')
-    #             elm.click()
-    #             elm = driver.find_element(By.XPATH, '//*[@id="ui-datepicker-div"]/div/div/span[1]')
-    #             counter += 1
+                # # get time dropdown's #shadow-root
+                # time_dropdown_wrapper = root.find_element(By.XPATH, './/wdpr-single-select')
+                # time_dropdown_root = expand_shadow_element(driver, time_dropdown_wrapper)
+                # time_dropdown = time_dropdown_root.find_element(By.XPATH, './/button[@id="custom-dropdown-button"]')
+                # time_dropdown.click()
 
-    #         # if we have searched too far there is an error and we exit.
-    #         if counter > 6:
-    #             break
-    #         # after we find the month we need to find the proper date
-    #         # elements = driver.find_element(By.XPATH, '//*[@id="ui-datepicker-div"]/table/tbody')
-    #         # find the element of the specific date
-    #         time.sleep(1) # full sleep because the python program is going faster than the website can handle
-    #         elm = driver.find_element(By.XPATH, '//*[@id="ui-datepicker-div"]/table/tbody/tr//a[text()=' +day +']'  )
-    #         # click the element
-    #         elm.click()
-    #         # click the dropdown list:
-    #         elm = driver.find_element(By.XPATH, '//*[@id="searchTime-wrapper"]/div[1]')
-    #         elm.click()
-    #         # multiple ways to find the time in the DOM, the format for time has to be 'x:xx pm'/'x:xx am'
+                # root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+                #     By.XPATH,'//finder-availability-modal')))
 
-    #         try:
-    #             time.sleep(1)
-    #             elm = WebDriverWait(driver, TIMEOUT).until(EC.visibility_of_element_located((By.XPATH, '//*[@data-display="' +reservation.time+'"]')))
-    #             elm.click()
-    #         except TimeoutException:
-    #             print("Can't find reservation time")
-    #         # click on dropdown for party size
-    #         elm = driver.find_element(By.XPATH, '//*[@id="partySize-wrapper"]/div[1]')
-    #         elm.click()
-    #         # find element for party and click
-    #         try:
-    #             time.sleep(1) # full sleep because the python program is going faster than the website can handle
-    #             elm = WebDriverWait(driver, TIMEOUT).until(EC.element_to_be_clickable((By.XPATH, '//*[@data-value="'+reservation.party+'" and @role="option"]')))
-    #             elm.click()
-    #         except TimeoutException:
-    #             print("can't select party size")
+                search_button = root.find_element(By.XPATH, './/finder-button')
+                search_button.click()
 
-    #         # click submit and search
-    #         elm = driver.find_element(By.XPATH, '//*[@id="dineAvailSearchButton"]')
-    #         elm.click()
+                time.sleep(5)
+                
+        except RuntimeError:
+            print(f'failed to check reservations for {restaurant.name}')
 
-    #         try:
-    #             # search by class name
-    #             driver.implicitly_wait(2)# needed to call sleep here, some issues on windows version on chrome
-    #             elm = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((By.CLASS_NAME, 'availableTime')))
-    #             elm = driver.find_elements(By.CLASS_NAME, 'availableTime')
+        #     try:
+        #         time.sleep(1)
+        #         elm = WebDriverWait(driver, TIMEOUT).until(EC.visibility_of_element_located((By.XPATH, '//*[@data-display="' +reservation.time+'"]')))
+        #         elm.click()
+        #     except TimeoutException:
+        #         print("Can't find reservation time")
+        #     # click on dropdown for party size
+        #     elm = driver.find_element(By.XPATH, '//*[@id="partySize-wrapper"]/div[1]')
+        #     elm.click()
+        #     # find element for party and click
+        #     try:
+        #         time.sleep(1) # full sleep because the python program is going faster than the website can handle
+        #         elm = WebDriverWait(driver, TIMEOUT).until(EC.element_to_be_clickable((By.XPATH, '//*[@data-value="'+reservation.party+'" and @role="option"]')))
+        #         elm.click()
+        #     except TimeoutException:
+        #         print("can't select party size")
 
-    #             times = []
-    #             for e in elm:
-    #                 times.append(e.text)
+        #     # click submit and search
+        #     elm = driver.find_element(By.XPATH, '//*[@id="dineAvailSearchButton"]')
+        #     elm.click()
 
-    #             alert = Alert(restaurant.name, reservation.date, reservation.party, times)
-    #             results.append(alert)
-    #         except TimeoutException:
-    #             print("waiting too long for element/no reservation")
+        #     try:
+        #         # search by class name
+        #         driver.implicitly_wait(2)# needed to call sleep here, some issues on windows version on chrome
+        #         elm = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((By.CLASS_NAME, 'availableTime')))
+        #         elm = driver.find_elements(By.CLASS_NAME, 'availableTime')
 
-    # return results
+        #         times = []
+        #         for e in elm:
+        #             times.append(e.text)
+
+        #         alert = Alert(restaurant.name, reservation.date, reservation.party, times)
+        #         results.append(alert)
+        #     except TimeoutException:
+        #         print("waiting too long for element/no reservation")
+
+    return results
 
 def send_alerts(alert_list):
     """A function for sending text alerts of Restaurants availability
@@ -277,10 +288,12 @@ def main():
 
     driver = webdriver.Chrome()
 
+    login(driver)
+    alerts = get_availability(restaurant_list, driver)
+    print(alerts)
+
     try:
-        alerts = get_availability(restaurant_list, driver)
-        print(alerts)
-        send_alerts(alerts)
+        # send_alerts(alerts)
         print("Alerts Sent")
     except smtplib.SMTPException:
         print("Error: unable to send:\n" + alerts)
