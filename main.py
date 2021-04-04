@@ -112,7 +112,7 @@ def main():
     alerts = get_availability(restaurants, driver)
     driver.close()
 
-    # send_alerts(alerts)
+    send_alerts(alerts)
 
 def login(driver):
     driver.get(f'{BASE_URL}/login')
@@ -209,9 +209,7 @@ def get_availability(r_list, driver):
                     search_button = root.find_element_by_xpath('.//finder-button')
                     search_button.click()
 
-                    # wait for reservation options
-                    WebDriverWait(root, TIMEOUT).until(EC.presence_of_element_located((
-                        By.XPATH, f'.//*[text()="Reserve a table at"]')))
+                    WebDriverWait(root, 10).until(reservation_search_is_complete)
 
                     # add reservation options to results
                     available_times = root.find_elements_by_xpath('.//*[@class="finder-button secondary ng-star-inserted"]')
@@ -228,6 +226,15 @@ def get_availability(r_list, driver):
 
 def expand_shadow_element(driver, element):
     return driver.execute_script('return arguments[0].shadowRoot', element)
+
+def reservation_search_is_complete(driver):
+    if len(driver.find_elements_by_css_selector('.reserve-title')) > 0:
+        return True
+
+    if len(driver.find_elements_by_css_selector('.times-unavailable')) > 0:
+        return True
+
+    return False
 
 def send_alerts(alert_list):
     """A function for sending text alerts of Restaurants availability
@@ -250,6 +257,9 @@ def send_alerts(alert_list):
     message = ""
 
     for alert in alert_list:
+        if len(alert.times) == 0:
+            continue
+
         message += f'\n{alert.restaurant_name} has reservations open for '
 
         for time in alert.times:
@@ -257,14 +267,16 @@ def send_alerts(alert_list):
         message += "on "
         message += alert.date
 
-    try:
-        # server.sendmail(EMAIL_USERNAME, ["8014718540@vtext.com", "8016691177@vtext.com"], message)
-        print(message)
-    except:
-        print("Error: unable to send:\n" + message)
+    if message != "":
+        try:
+            # server.sendmail(EMAIL_USERNAME, ["8014718540@vtext.com", "8016691177@vtext.com"], message)
+            print(message)
+            print("Alerts Sent")
+        except:
+            print("Error: unable to send:\n" + message)
 
     server.quit()    
-    print("Alerts Sent")
+
 
 if __name__ == "__main__":
     main()

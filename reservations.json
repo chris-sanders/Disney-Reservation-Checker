@@ -1,20 +1,12 @@
 {
 	"restaurants": [
 		{
-			"name": "Rainforest Cafe",
-			"link": "https://disneyworld.disney.go.com/dining/disney-springs/rainforest-cafe-disney-springs/availability-modal",
+			"name": "Be Our Guest",
+			"link": "https://disneyworld.disney.go.com/dining/magic-kingdom/be-our-guest-restaurant/availability-modal/",
 			"reservations": [
 				{
 					"date": "06/1/21",
 					"times": ["Lunch", "Dinner"]
-				},
-				{
-					"date": "04/30/21",
-					"times": ["Lunch", "Dinner"]
-				},
-				{
-					"date": "05/07/21",
-					"times": ["Lunch"]
 				}
 			]
 		}

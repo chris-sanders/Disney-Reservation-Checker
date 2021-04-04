@@ -54,7 +54,8 @@ Modify the existing `reservations.json` file in this repo with the specific rest
 **date**: the date of your desired reservation in DD/MM/YY format (e.g. 01/04/2022)
 
 ## TODO
-* Handle instances where a reservation isn't available gracefully
+* Verify disney isn't blocking scraping.. (400s being recieved)?
+* Handle multiple restaurants remembering month of last check reservation
 * Configure user from file rather than env
 * Todos in code
 * Code Cleanup
