@@ -31,7 +31,7 @@ Modify the existing `reservations.json` file in this repo with the specific rest
 		"reservations": [
 			{
 				"time": "Dinner",
-				"date": "05/08/21"
+				"date": "05/08/2021"
 			}
 		]
 	}
@@ -51,11 +51,10 @@ Modify the existing `reservations.json` file in this repo with the specific rest
 
 **times**: An array of times you're interested in a reservation for. Reservation times should be H:MM format in half hour increments (e.g. 7:30 is valid, 7:45 is not) or one of `Breakfast`, `Brunch`, `Lunch`, or `Dinner`. The checker is no smart enough to determine invalid times or entries. If you request `Brunch` at a restaurant that does not offer it you won't recieve results
 
-**date**: the date of your desired reservation in DD/MM/YY format (e.g. 01/04/2022)
+**date**: the date of your desired reservation in DD/MM/YYYY format (e.g. 01/04/2022)
 
 ## TODO
 * Verify disney isn't blocking scraping.. (400s being recieved)?
-* Handle multiple restaurants remembering month of last check reservation
 * Configure user from file rather than env
 * Todos in code
 * Code Cleanup

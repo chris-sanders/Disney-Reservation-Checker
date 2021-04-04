@@ -96,7 +96,11 @@ def main():
 
         reservations = []
         for reservation in restaurant["reservations"]:
-            date = reservation["date"]
+            raw_date = reservation["date"]
+            date = datetime.strptime(raw_date, '%d/%m/%Y')
+
+            # TODO (epoole) add validation on date
+            # reservations can be made only up to two months in advance
 
             times = []
             for time in reservation["times"]:
@@ -149,12 +153,11 @@ def get_availability(r_list, driver):
     results = []
     for restaurant in r_list:
         driver.get(restaurant.link)
-        current_month = datetime.today().month
         try:
             for reservation in restaurant.reservations:
-                split_date = reservation.date.split('/')
-                month = int(split_date[0])
-                day = int(split_date[1])
+                # split_date = reservation.date.split('/')
+                # month = int(split_date[0])
+                # day = int(split_date[1])
 
                 root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
                     By.XPATH, '//finder-availability-modal')))
@@ -164,28 +167,10 @@ def get_availability(r_list, driver):
                     By.XPATH, './/button[@class="calendar-button"]')))
                 calendar_button.click()
 
-                months_diff = month - current_month
-                if months_diff < 0:
-                    months_diff += 12
-
-                # TODO (epoole) break this into a validation step before selenium
-                # reservations can be made only up to two months in advance
-                if months_diff > 2:
-                    print(f'invalid reservation date requested - {reservation.date}; reservations can only be made up to 60 days in advance')
-                    continue
-
-                # click next month a number of times based on months_diff
-                for _ in range(months_diff):
-                    next_month_icon = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((
-                        By.XPATH, './/*[@class="arrow-next header-cell ng-star-inserted"]')))
-                    next_month_icon.click()
-                    current_month = (current_month % 12) + 1
-
-                WebDriverWait(root, TIMEOUT).until(EC.presence_of_element_located((
-                    By.XPATH, f'.//*[text()="{MONTH_MAP[month]}"]')))
+                navigate_to_month(root, reservation.date)
                 
                 # select date
-                day_section = root.find_element_by_xpath(f'.//*[text()=" {day} "]')
+                day_section = root.find_element_by_xpath(f'.//*[text()=" {reservation.date.day} "]')
                 day_section.click()
 
                 times = []
@@ -223,6 +208,39 @@ def get_availability(r_list, driver):
             traceback.print_exc()
 
     return results
+
+def navigate_to_month(driver, requested_date):
+    month_number_to_name = {1: "January", 2: "February", 3: "March", 4: "April", 5: "May",
+            6: "June", 7: "July", 8: "August", 9: "September", 10: "October",
+            11: "November", 12: "December"}
+    month_name_to_number = {value: key for key, value in month_number_to_name.items()}
+
+    month_and_year = driver.find_element_by_css_selector('.month-and-year').text
+    current_month_name, current_year_text = month_and_year.split(' ')
+    current_month = month_name_to_number[current_month_name]
+    current_year = int(current_year_text)
+
+    adjusted_month = requested_date.month
+    if requested_date.year > current_year:
+        adjusted_month += 12
+    
+    if requested_date.year < current_year:
+        adjusted_month -= 12
+
+    months_diff = adjusted_month - current_month
+
+    # either click next or prev button based on months-diff
+    xpath = './/*[@class="arrow-next header-cell ng-star-inserted"]'
+    if months_diff < 0:
+        xpath = './/*[@class="arrow-prev header-cell ng-star-inserted"]'
+        months_diff *= -1
+
+    for _ in range(months_diff):
+        next_month_icon = WebDriverWait(driver, TIMEOUT).until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        next_month_icon.click()
+
+    WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+        By.XPATH, f'.//*[text()="{month_number_to_name[requested_date.month]}"]')))
 
 def expand_shadow_element(driver, element):
     return driver.execute_script('return arguments[0].shadowRoot', element)
@@ -265,7 +283,7 @@ def send_alerts(alert_list):
         for time in alert.times:
             message += f'{time} '
         message += "on "
-        message += alert.date
+        message += alert.date.strftime('%d/%m/%Y')
 
     if message != "":
         try:
@@ -280,15 +298,3 @@ def send_alerts(alert_list):
 
 if __name__ == "__main__":
     main()
-
-		# {
-		# 	"name": "Rainforest Cafe",
-		# 	"link": "https://disneyworld.disney.go.com/dining/disney-springs/rainforest-cafe-disney-springs/availability-modal",
-
-		# 	"reservations": [
-		# 		{
-		# 			"time": "Dinner",
-		# 			"date": "05/08/21"
-		# 		}
-		# 	]
-		# }
