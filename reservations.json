@@ -5,8 +5,16 @@
 			"link": "https://disneyworld.disney.go.com/dining/disney-springs/rainforest-cafe-disney-springs/availability-modal",
 			"reservations": [
 				{
-					"date": "05/08/21",
+					"date": "06/1/21",
 					"times": ["Lunch", "Dinner"]
+				},
+				{
+					"date": "04/30/21",
+					"times": ["Lunch", "Dinner"]
+				},
+				{
+					"date": "05/07/21",
+					"times": ["Lunch"]
 				}
 			]
 		}

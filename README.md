@@ -55,7 +55,8 @@ Modify the existing `reservations.json` file in this repo with the specific rest
 
 ## TODO
 * Handle instances where a reservation isn't available gracefully
+* Configure user from file rather than env
 * Todos in code
+* Code Cleanup
 * Run on chron
 * Run in AWS instance
-* Configure user from file rather than env

@@ -14,20 +14,17 @@ from selenium.common.exceptions import TimeoutException
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 
-# These variables will be used for Texting services
 TIMEOUT = 10
 BASE_URL = 'https://disneyworld.disney.go.com'
+MONTH_MAP = {1: "January", 2: "February", 3: "March", 4: "April", 5: "May",
+            6: "June", 7: "July", 8: "August", 9: "September", 10: "October",
+            11: "November", 12: "December"}
 
-# TODO validate secrets
+# TODO move to config file rather than env
 EMAIL_USERNAME = os.getenv('EMAIL_USERNAME')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
 DISNEY_USERNAME = os.getenv('DISNEY_USERNAME')
 DISNEY_PASSWORD = os.getenv('DISNEY_PASSWORD')
-
-# a dictionary to convert numeric month into phonetic form
-MONTH_MAP = {1: "January", 2: "February", 3: "March", 4: "April", 5: "May",
-            6: "June", 7: "July", 8: "August", 9: "September", 10: "October",
-            11: "November", 12: "December"}
 
 class Alert:
     """An Object Representation of a Text Alert
@@ -107,6 +104,7 @@ def main():
 
             reservations.append(Reservation(date, times))
 
+        reservations.sort(key=lambda reservation: reservation.date)
         restaurants.append(Restaurant(name, link, reservations))
 
     driver = webdriver.Chrome()
@@ -114,7 +112,7 @@ def main():
     alerts = get_availability(restaurants, driver)
     driver.close()
 
-    send_alerts(alerts)
+    # send_alerts(alerts)
 
 def login(driver):
     driver.get(f'{BASE_URL}/login')
@@ -151,10 +149,9 @@ def get_availability(r_list, driver):
     results = []
     for restaurant in r_list:
         driver.get(restaurant.link)
+        current_month = datetime.today().month
         try:
             for reservation in restaurant.reservations:
-                # TODO (epoole) we need to sort reservations if we aren't refreshing the page constantly
-
                 split_date = reservation.date.split('/')
                 month = int(split_date[0])
                 day = int(split_date[1])
@@ -167,7 +164,7 @@ def get_availability(r_list, driver):
                     By.XPATH, './/button[@class="calendar-button"]')))
                 calendar_button.click()
 
-                months_diff = month - datetime.today().month
+                months_diff = month - current_month
                 if months_diff < 0:
                     months_diff += 12
 
@@ -182,6 +179,7 @@ def get_availability(r_list, driver):
                     next_month_icon = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((
                         By.XPATH, './/*[@class="arrow-next header-cell ng-star-inserted"]')))
                     next_month_icon.click()
+                    current_month = (current_month % 12) + 1
 
                 WebDriverWait(root, TIMEOUT).until(EC.presence_of_element_located((
                     By.XPATH, f'.//*[text()="{MONTH_MAP[month]}"]')))
@@ -223,7 +221,7 @@ def get_availability(r_list, driver):
                 results.append(Alert(restaurant.name, reservation.date, times))
                 
         except:
-            print(f'failed to check reservations for {restaurant.name} for {reservation.time} on {reservation.date}')
+            print(f'failed to check reservations for {restaurant.name} on {reservation.date}')
             traceback.print_exc()
 
     return results
