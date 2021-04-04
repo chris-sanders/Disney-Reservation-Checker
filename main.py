@@ -232,7 +232,7 @@ def main():
         print("Missing required credentials in environment variables")
         sys.exit(1)
 
-    infile = open("places.json", "r")
+    infile = open("reservations.json", "r")
     data = json.load(infile)
     infile.close()
 
