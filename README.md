@@ -19,6 +19,13 @@ python -m pip install -r requirements.txt
 
 ## Configuration
 
+The script expects five environment variables to be set:
+* EMAIL_USERNAME
+* EMAIL_PASSWORD
+* DISNEY_USERNAME
+* DISNEY_PASSWORD
+* RECIPIENT_ADDRESS (e.g. `8001234567@vtext.com` or `myemail@email.com`)
+
 Modify the existing `reservations.json` file in this repo with the specific restaurants and reservation times you'd like to check.
 
 ```json
@@ -54,9 +61,5 @@ Modify the existing `reservations.json` file in this repo with the specific rest
 **date**: the date of your desired reservation in DD/MM/YYYY format (e.g. 01/04/2022)
 
 ## TODO
-* Verify disney isn't blocking scraping.. (400s being recieved)?
-* Configure user from file rather than env
-* Todos in code
-* Code Cleanup
 * Run on chron
 * Run in AWS instance
