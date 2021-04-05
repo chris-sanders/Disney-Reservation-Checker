@@ -29,16 +29,15 @@ class Reservation:
 
 
 class Restaurant:
-    def __init__(self, name, link,  reservations = []):
+    def __init__(self, name, link, reservations):
         self.name = name
         self.reservations = reservations
         self.link = link
 
 class Alert:
-    def __init__(self, restaurant_name, date, times = [] ):
+    def __init__(self, restaurant_name, reservations):
         self.restaurant_name = restaurant_name
-        self.times = times
-        self.date = date
+        self.reservations = reservations
 
 def main():
     if EMAIL_USERNAME is None or EMAIL_PASSWORD is None or EMAIL_USERNAME is None or DISNEY_PASSWORD is None or RECIPIENT_ADDRESS is None:
@@ -130,8 +129,9 @@ def get_availability(r_list, driver):
     results = []
     for restaurant in r_list:
         driver.get(restaurant.link)
-        try:
-            for reservation in restaurant.reservations:
+        available_reservations = []
+        for reservation in restaurant.reservations:
+            try:
                 root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
                     By.XPATH, '//finder-availability-modal')))
                     
@@ -161,11 +161,15 @@ def get_availability(r_list, driver):
                     for available_time in available_times:
                         times.append(available_time.text)
 
-                results.append(Alert(restaurant.name, reservation.date, times))
+                if len(times) > 0:
+                    available_reservations.append(Reservation(reservation.date, times))
                 
-        except:
-            print(f'failed to check reservations for {restaurant.name}')
-            traceback.print_exc()
+            except:
+                print(f'failed to check available reservations for {restaurant.name} on {reservation.date.strftime("%d/%m/%Y")}')
+                traceback.print_exc()
+        
+        if len(available_reservations) > 0:
+            results.append(Alert(restaurant.name, available_reservations))
 
     return results
 
@@ -230,24 +234,20 @@ def reservation_search_is_complete(driver):
 
     return False
 
-def send_alerts(alert_list):
-    if alert_list is []:
+def send_alerts(alerts):
+    if len(alerts) == 0:
         return
     
     server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
     server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
     message = ''
 
-    for alert in alert_list:
-        if len(alert.times) == 0:
-            continue
-
-        message += f'\n{alert.restaurant_name} has reservations open for '
-
-        for time in alert.times:
-            message += f'{time} '
-        message += 'on '
-        message += alert.date.strftime('%d/%m/%Y')
+    for alert in alerts:
+        message += f'\n{alert.restaurant_name} has reservations open for'
+        for reservation in alert.reservations:
+            message += f'\n{reservation.date.strftime("%d/%m/%Y")} at '
+            for time in reservation.times:
+                message += f'{time} '
 
     if message != '':
         try:
