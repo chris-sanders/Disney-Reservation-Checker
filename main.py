@@ -243,7 +243,7 @@ def send_alerts(alerts):
     message = ''
 
     for alert in alerts:
-        message += f'\n{alert.restaurant_name} has reservations open for'
+        message += f'\n\n{alert.restaurant_name} has reservations open for'
         for reservation in alert.reservations:
             message += f'\n{reservation.date.strftime("%d/%m/%Y")} at '
             for time in reservation.times:

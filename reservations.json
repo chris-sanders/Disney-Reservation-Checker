@@ -1,8 +1,8 @@
 {
 	"restaurants": [
 		{
-			"name": "Coral Reef Restaurant",
-			"link": "https://disneyworld.disney.go.com/dining/epcot/coral-reef-restaurant/availability-modal",
+			"name": "Sci-Fi Dine-In Theater",
+			"link": "https://disneyworld.disney.go.com/dining/hollywood-studios/sci-fi-dine-in-theater/availability-modal",
 			"reservations": [
 				{
 					"date": "08/05/2021",
@@ -39,8 +39,8 @@
 			]
 		},
 		{
-			"name": "Rainforest Cafe",
-			"link": "https://disneyworld.disney.go.com/dining/disney-springs/rainforest-cafe-disney-springs/availability-modal",
+			"name": "Be Our Guest",
+			"link": "https://disneyworld.disney.go.com/dining/magic-kingdom/be-our-guest-restaurant/availability-modal/",
 
 			"reservations": [
 				{
