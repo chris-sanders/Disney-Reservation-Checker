@@ -15,6 +15,7 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 
 TIMEOUT = 10  # seconds
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
 BASE_URL = 'https://disneyworld.disney.go.com'
 
 EMAIL_USERNAME = os.getenv('EMAIL_USERNAME')
@@ -55,7 +56,9 @@ def main():
 
     options = Options()
     options.headless = True
-    driver = webdriver.Chrome(chrome_options=options)
+    options.add_argument(
+        f'user-agent={USER_AGENT}')
+    driver = webdriver.Chrome(options=options)
 
     try:
         login(driver)
@@ -76,10 +79,16 @@ def main():
     except:
         exit_with_failure('a fatal error occured while sending alerts')
 
+    print_with_timestamp('script ended successfully')
+
+
+def print_with_timestamp(text):
+    print(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} - {text}')
+
 
 def exit_with_failure(message):
     traceback.print_exc()
-    print(message)
+    print_with_timestamp(message)
     sys.exit(1)
 
 
