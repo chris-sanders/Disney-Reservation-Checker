@@ -6,76 +6,121 @@
 			"reservations": [
 				{
 					"date": "08/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "09/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "10/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "11/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "12/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "13/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "14/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "15/05/2021",
-					"times": ["Lunch"]
+					"times": [
+						"Lunch"
+					]
 				}
 			]
 		},
 		{
 			"name": "Be Our Guest",
 			"link": "https://disneyworld.disney.go.com/dining/magic-kingdom/be-our-guest-restaurant/availability-modal/",
-
 			"reservations": [
 				{
 					"date": "08/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "09/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "10/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "11/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "12/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "13/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "14/05/2021",
-					"times": ["Lunch", "Dinner"]
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
 				},
 				{
 					"date": "15/05/2021",
-					"times": ["Lunch"]
+					"times": [
+						"Lunch"
+					]
 				}
 			]
 		}
-    ]
+	]
 }

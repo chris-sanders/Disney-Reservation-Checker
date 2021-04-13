@@ -58,7 +58,11 @@ def main():
     options.headless = True
     options.add_argument(
         f'user-agent={USER_AGENT}')
-    driver = webdriver.Chrome(options=options)
+    options.add_argument("no-sandbox")
+    options.add_argument("disable-dev-shm-usage")
+
+    driver = webdriver.Chrome(
+        options=options)
 
     try:
         login(driver)
