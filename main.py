@@ -114,7 +114,9 @@ def load_restaurant_reservations():
             try:
                 date = datetime.strptime(raw_date, '%d/%m/%Y')
                 date_diff = (date - today).days
-                if date_diff < 0 or date_diff > 60:
+                if date_diff < 0:
+                    continue
+                if date_diff > 60:
                     raise Exception
             except:
                 print(

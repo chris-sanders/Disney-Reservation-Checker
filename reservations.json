@@ -62,8 +62,69 @@
 			]
 		},
 		{
-			"name": "Be Our Guest",
-			"link": "https://disneyworld.disney.go.com/dining/magic-kingdom/be-our-guest-restaurant/availability-modal/",
+			"name": "Sanaa",
+			"link": "https://disneyworld.disney.go.com/dining/animal-kingdom-villas-kidani/sanaa/availability-modal",
+			"reservations": [
+				{
+					"date": "08/05/2021",
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
+				},
+				{
+					"date": "09/05/2021",
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
+				},
+				{
+					"date": "10/05/2021",
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
+				},
+				{
+					"date": "11/05/2021",
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
+				},
+				{
+					"date": "12/05/2021",
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
+				},
+				{
+					"date": "13/05/2021",
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
+				},
+				{
+					"date": "14/05/2021",
+					"times": [
+						"Lunch",
+						"Dinner"
+					]
+				},
+				{
+					"date": "15/05/2021",
+					"times": [
+						"Lunch"
+					]
+				}
+			]
+		},
+		{
+			"name": "Beaches and Cream",
+			"link": "https://disneyworld.disney.go.com/dining/beach-club-resort/beaches-and-cream-soda-shop/availability-modal",
 			"reservations": [
 				{
 					"date": "08/05/2021",
