@@ -5,8 +5,10 @@ import json
 import os
 import sys
 import traceback
+import requests
 from time import sleep
 
+from discord import Webhook, RequestsWebhookAdapter
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
@@ -24,7 +26,8 @@ EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
 DISNEY_USERNAME = os.getenv('DISNEY_USERNAME')
 DISNEY_PASSWORD = os.getenv('DISNEY_PASSWORD')
 RECIPIENT_ADDRESS = os.getenv('RECIPIENT_ADDRESS')
-
+DISCORD_URL = os.getenv('DISCORD_URL')
+DISCORD_PRE_MSG = os.getenv('DISCORD_PRE_MSG')
 
 class Reservation:
     def __init__(self, date, times, size):
@@ -47,7 +50,7 @@ class Alert:
 
 
 def main():
-    if EMAIL_USERNAME is None or EMAIL_PASSWORD is None or EMAIL_USERNAME is None or DISNEY_PASSWORD is None or RECIPIENT_ADDRESS is None:
+    if DISNEY_PASSWORD is None or DISNEY_USERNAME is None:
         exit_with_failure(
             'missing required credentials in environment variables')
 
@@ -81,10 +84,17 @@ def main():
 
     driver.close()
 
-    try:
-        send_alerts(alerts)
-    except:
-        exit_with_failure('a fatal error occured while sending alerts')
+    if EMAIL_USERNAME and EMAIL_PASSWORD:
+        try:
+            send_alerts(alerts)
+        except:
+            exit_with_failure('a fatal error occured while sending email alerts')
+
+    if DISCORD_URL:
+        try:
+            send_discord_msg(alerts)
+        except:
+            exit_with_failure('a fatal error occured while sending discord alerts')
 
     print_with_timestamp('script ended successfully')
 
@@ -323,6 +333,23 @@ def reservation_search_is_complete(driver):
 
     return False
 
+def get_alert_msg(alerts):
+    message = ''
+    for alert in alerts:
+        message += f'\n\n{alert.restaurant_name} has reservations open for'
+        for reservation in alert.reservations:
+            message += f'\n{reservation.size}\n{reservation.date.strftime("%d/%m/%Y")} at '
+            for time in reservation.times:
+                message += f'{time} '
+    return message
+
+def send_discord_msg(alerts):
+    if len(alerts) == 0:
+        return
+    msg = str(DISCORD_PRE_MSG)
+    webhook = Webhook.from_url(DISCORD_URL, adapter=RequestsWebhookAdapter())
+    msg += get_alert_msg(alerts)
+    webhook.send(msg)
 
 def send_alerts(alerts):
     if len(alerts) == 0:
@@ -333,12 +360,7 @@ def send_alerts(alerts):
     subject = 'Subject: Disney Reservation Found'
     message = subject
 
-    for alert in alerts:
-        message += f'\n\n{alert.restaurant_name} has reservations open for'
-        for reservation in alert.reservations:
-            message += f'\n{reservation.date.strftime("%d/%m/%Y")} at '
-            for time in reservation.times:
-                message += f'{time} '
+    message += get_alert_msg(alerts)
 
     if message != subject:
         try:
