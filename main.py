@@ -16,7 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 TIMEOUT = 10  # seconds
 USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
-BASE_URL = 'https://disneyworld.disney.go.com'
+BASE_URL = 'https://disneyland.disney.go.com'
 
 EMAIL_USERNAME = os.getenv('EMAIL_USERNAME')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
@@ -26,9 +26,10 @@ RECIPIENT_ADDRESS = os.getenv('RECIPIENT_ADDRESS')
 
 
 class Reservation:
-    def __init__(self, date, times):
+    def __init__(self, date, times, size):
         self.date = date
         self.times = times
+        self.size = size
 
 
 class Restaurant:
@@ -128,7 +129,8 @@ def load_restaurant_reservations():
             for time in reservation['times']:
                 times.append(time)
 
-            reservations.append(Reservation(date, times))
+            size = reservation.get('size', 2)
+            reservations.append(Reservation(date, times, size))
 
         reservations.sort(key=lambda reservation: reservation.date)
         restaurants.append(Restaurant(name, link, reservations))
@@ -142,13 +144,15 @@ def load_restaurant_reservations():
 
 def login(driver):
     driver.get(f'{BASE_URL}/login')
-
+    WebDriverWait(driver, TIMEOUT).until(
+            EC.frame_to_be_available_and_switch_to_it((By.ID, "disneyid-iframe"))
+        )
     emailField = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-        By.ID, 'loginPageUsername')))
+        By.XPATH, "//input[@type='email']")))
     emailField.send_keys(DISNEY_USERNAME)
-    passwordField = driver.find_element_by_id('loginPagePassword')
+    passwordField = driver.find_element_by_xpath("//input[@type='password']")
     passwordField.send_keys(DISNEY_PASSWORD)
-    signin_button = driver.find_element_by_id('loginPageSubmitButton')
+    signin_button = driver.find_element_by_xpath("//button[@type='submit']")
     signin_button.click()
 
     WebDriverWait(driver, TIMEOUT).until(
@@ -176,6 +180,9 @@ def get_availability(r_list, driver):
                 day_section = root.find_element_by_xpath(
                     f'.//*[text()=" {reservation.date.day} "]')
                 day_section.click()
+                
+                # select party size
+                set_party_size(driver, reservation.size) 
 
                 times = []
                 for requested_time in reservation.times:
@@ -197,7 +204,7 @@ def get_availability(r_list, driver):
 
                 if len(times) > 0:
                     available_reservations.append(
-                        Reservation(reservation.date, times))
+                        Reservation(reservation.date, times, reservation.size))
 
             except:
                 print(
@@ -219,7 +226,8 @@ def navigate_to_month(driver, requested_date):
 
     month_and_year = driver.find_element_by_css_selector(
         '.month-and-year').text
-    current_month_name, current_year_text = month_and_year.split(' ')
+    current_month_name = month_and_year[:-4]
+    current_year_text = month_and_year[-4:]
     current_month = month_name_to_number[current_month_name]
     current_year = int(current_year_text)
 
@@ -245,6 +253,23 @@ def navigate_to_month(driver, requested_date):
 
     WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
         By.XPATH, f'.//*[text()="{month_number_to_name[requested_date.month]}"]')))
+
+def set_party_size(driver, size):
+    shadow_wrapper = driver.find_element_by_xpath('.//wdpr-counter')
+    shadow_section = expand_shadow_element(driver, shadow_wrapper)
+    current_size = shadow_section.find_element_by_id("nonEditableCounter").text
+    delta = size - int(current_size)
+    button_id = ""
+    if delta > 0:
+        button_id = "plusButton"
+    elif delta < 0:
+        button_id = "minusButton"
+    if button_id:
+        sleep(1)  # No good way to wait in shadow root?
+        for _ in range(abs(delta)):
+            button = WebDriverWait(shadow_section, TIMEOUT).until(
+                EC.element_to_be_clickable((By.ID, button_id)))
+            button.click()
 
 
 def select_time(driver, time):
@@ -283,7 +308,8 @@ def send_alerts(alerts):
 
     server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
     server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
-    message = ''
+    subject = 'Subject: Disney Reservation Found'
+    message = subject
 
     for alert in alerts:
         message += f'\n\n{alert.restaurant_name} has reservations open for'
@@ -292,9 +318,10 @@ def send_alerts(alerts):
             for time in reservation.times:
                 message += f'{time} '
 
-    if message != '':
+    if message != subject:
         try:
-            server.sendmail(EMAIL_USERNAME, [RECIPIENT_ADDRESS], message)
+            recipients = [a for a in RECIPIENT_ADDRESS.split(',')]
+            server.sendmail(EMAIL_USERNAME, recipients, message)
             print(message)
         except:
             print('unable to send:\n' + message)
