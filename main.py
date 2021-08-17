@@ -12,6 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 import smtplib
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
 TIMEOUT = 10  # seconds
@@ -61,15 +62,16 @@ def main():
         f'user-agent={USER_AGENT}')
     options.add_argument("no-sandbox")
     options.add_argument("disable-dev-shm-usage")
+    options.add_argument("user-data-dir=data")
 
     driver = webdriver.Chrome(
         options=options)
 
-    try:
-        login(driver)
-    except:
-        exit_with_failure(
-            'a fatal error occured while logging into `MyDisneyExperience`')
+    # try:
+    #     login(driver)
+    # except:
+    #     exit_with_failure(
+    #         'a fatal error occured while logging into `MyDisneyExperience`')
 
     try:
         alerts = get_availability(restaurants, driver)
@@ -142,8 +144,13 @@ def load_restaurant_reservations():
     return restaurants
 
 
-def login(driver):
-    driver.get(f'{BASE_URL}/login')
+def login(driver, navigate=True):
+    # if navigate:
+    #     print(f"DEBUG: Navigating to log in")
+    #     driver.get(f'{BASE_URL}/login')
+    #     WebDriverWait(driver, TIMEOUT).until(
+    #         lambda driver: driver.current_url == f'{BASE_URL}/login')
+
     WebDriverWait(driver, TIMEOUT).until(
             EC.frame_to_be_available_and_switch_to_it((By.ID, "disneyid-iframe"))
         )
@@ -155,8 +162,14 @@ def login(driver):
     signin_button = driver.find_element_by_xpath("//button[@type='submit']")
     signin_button.click()
 
-    WebDriverWait(driver, TIMEOUT).until(
-        lambda driver: driver.current_url == f'{BASE_URL}/')
+    # if navigate:
+    #     try:
+    #         WebDriverWait(driver, TIMEOUT).until(
+    #             lambda driver: driver.current_url == f'{BASE_URL}/')
+    #     except TimeoutException as e:
+    #         print("DEBUG: Signin didn't complete")
+    #         print(f"DEBUG: current_url: {driver.current_url}")
+    #         raise e
 
 
 def get_availability(r_list, driver):
@@ -166,8 +179,17 @@ def get_availability(r_list, driver):
         available_reservations = []
         for reservation in restaurant.reservations:
             try:
-                root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-                    By.XPATH, '//finder-availability-modal')))
+                try:
+                    root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+                        By.XPATH, '//finder-availability-modal')))
+                except TimeoutException:
+                    # Might need to login
+                    print(f"DEBUG: Need login?: {driver.current_url}")
+                    if "/login" in driver.current_url:
+                        print(f"DEBUG: logging in")
+                        login(driver, navigate=False)
+                        root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+                            By.XPATH, '//finder-availability-modal')))
 
                 # open calendar
                 calendar_button = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((
