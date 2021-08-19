@@ -17,7 +17,7 @@ from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
-TIMEOUT = 10  # seconds
+TIMEOUT = 20  # seconds
 USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
 BASE_URL = 'https://disneyland.disney.go.com'
 
@@ -70,11 +70,13 @@ def main():
     driver = webdriver.Chrome(
         options=options)
 
-    # try:
-    #     login(driver)
-    # except:
-    #     exit_with_failure(
-    #         'a fatal error occured while logging into `MyDisneyExperience`')
+    driver.get(f'{BASE_URL}')
+    # prune_cookies(driver)
+    try:
+        login(driver)
+    except:
+        exit_with_failure(
+            'a fatal error occured while logging into `MyDisneyExperience`')
 
     try:
         alerts = get_availability(restaurants, driver)
@@ -153,14 +155,33 @@ def load_restaurant_reservations():
 
     return restaurants
 
+def prune_cookies(driver):
+    cookies = driver.get_cookies()
+    for cookie in cookies:
+        expiry = cookie.get('expiry', 0)
+        if not expiry:
+            driver.delete_cookie(cookie["name"])
+            print(f"DEBUG deleted session cookie: {cookie['name']}")
+            continue
+        delta = datetime.fromtimestamp(expiry) - datetime.now()
+        print(f"DEBUG check cookie age: {delta}")
+        if delta.seconds < 300:
+            driver.delete_cookie(cookie["name"])
+            print(f"DEBUG deleted old cookie: {cookie['name']}")
 
 def login(driver, navigate=True):
-    # if navigate:
-    #     print(f"DEBUG: Navigating to log in")
-    #     driver.get(f'{BASE_URL}/login')
-    #     WebDriverWait(driver, TIMEOUT).until(
-    #         lambda driver: driver.current_url == f'{BASE_URL}/login')
+    if navigate:
+        print(f"DEBUG: Navigating to log in")
+        driver.get(f'{BASE_URL}/login')
+        # WebDriverWait(driver, TIMEOUT).until(
+        #     lambda driver: driver.current_url == f'{BASE_URL}/login')
 
+    # cookies = driver.get_cookies()
+    # time_delta = []
+    # for cookie in cookies:
+    #     delta = datetime.fromtimestamp(cookie.get('expiry', 0)) - datetime.now()
+    #     time_delta.append(str(delta))
+    # print(f"DEBUG login cookie: {time_delta}")
     WebDriverWait(driver, TIMEOUT).until(
             EC.frame_to_be_available_and_switch_to_it((By.ID, "disneyid-iframe"))
         )
@@ -172,14 +193,14 @@ def login(driver, navigate=True):
     signin_button = driver.find_element_by_xpath("//button[@type='submit']")
     signin_button.click()
 
-    # if navigate:
-    #     try:
-    #         WebDriverWait(driver, TIMEOUT).until(
-    #             lambda driver: driver.current_url == f'{BASE_URL}/')
-    #     except TimeoutException as e:
-    #         print("DEBUG: Signin didn't complete")
-    #         print(f"DEBUG: current_url: {driver.current_url}")
-    #         raise e
+    if navigate:
+        try:
+            WebDriverWait(driver, TIMEOUT).until(
+                lambda driver: driver.current_url == f'{BASE_URL}/')
+        except TimeoutException as e:
+            print("DEBUG: Signin didn't complete")
+            print(f"DEBUG: current_url: {driver.current_url}")
+            raise e
 
 
 def get_availability(r_list, driver):
@@ -192,14 +213,16 @@ def get_availability(r_list, driver):
                 try:
                     root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
                         By.XPATH, '//finder-availability-modal')))
-                except TimeoutException:
+                except TimeoutException as e:
                     # Might need to login
                     print(f"DEBUG: Need login?: {driver.current_url}")
                     if "/login" in driver.current_url:
-                        print(f"DEBUG: logging in")
+                        print(f"DEBUG: logging in w/ redirect")
                         login(driver, navigate=False)
                         root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
                             By.XPATH, '//finder-availability-modal')))
+                    else:
+                        raise e
 
                 # open calendar
                 calendar_button = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((
