@@ -210,19 +210,19 @@ def get_availability(r_list, driver):
         available_reservations = []
         for reservation in restaurant.reservations:
             try:
-                try:
-                    root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-                        By.XPATH, '//finder-availability-modal')))
-                except TimeoutException as e:
-                    # Might need to login
-                    print(f"DEBUG: Need login?: {driver.current_url}")
-                    if "/login" in driver.current_url:
-                        print(f"DEBUG: logging in w/ redirect")
-                        login(driver, navigate=False)
-                        root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-                            By.XPATH, '//finder-availability-modal')))
-                    else:
-                        raise e
+                # try:
+                root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+                    By.XPATH, '//finder-availability-modal')))
+                # except TimeoutException as e:
+                #     # Might need to login
+                #     print(f"DEBUG: Need login?: {driver.current_url}")
+                #     if "/login" in driver.current_url:
+                #         print(f"DEBUG: logging in w/ redirect")
+                #         login(driver, navigate=False)
+                #         root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+                #             By.XPATH, '//finder-availability-modal')))
+                #     else:
+                #         raise e
 
                 # open calendar
                 calendar_button = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((

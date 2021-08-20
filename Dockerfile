@@ -13,6 +13,8 @@ COPY requirements.txt requirements.txt
 RUN ["python3", "-m", "pip", "install", "-r", "requirements.txt"]
 
 COPY main.py main.py
-COPY reservations.json reservations.json
+RUN mkdir /data
+# Uncomment for local testing
+# COPY reservations.json reservations.json
 
 CMD python main.py
