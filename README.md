@@ -10,6 +10,8 @@ Alterations from this fork:
 * Added optional discord channel notification via webhook
 * Enabled session loading, this prevents each run from being registered as a new computer which will lock your account if run many times in a day.
   * Sessions are stored in /data mounting a volume is required when using docker
+* Changed to monitor Disneyland instead of Disneyworld
+  * Set by base url making a configurable option should work but I haven't tested the scraping of the disneyworld site to confirm.
 
 ## Purpose
 
