@@ -6,11 +6,11 @@ import os
 import sys
 import traceback
 from time import sleep
+import smtplib
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-import smtplib
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -143,12 +143,16 @@ def load_restaurant_reservations():
 def login(driver):
     driver.get(f'{BASE_URL}/login')
 
-    emailField = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-        By.ID, 'loginPageUsername')))
-    emailField.send_keys(DISNEY_USERNAME)
-    passwordField = driver.find_element_by_id('loginPagePassword')
-    passwordField.send_keys(DISNEY_PASSWORD)
-    signin_button = driver.find_element_by_id('loginPageSubmitButton')
+    iframe = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
+        By.ID, "disneyid-iframe")))
+    driver.switch_to.frame(iframe)
+    email_field = driver.find_element(By.XPATH, './/input[@type="email"]')
+    email_field.send_keys(DISNEY_USERNAME)
+    password_field = driver.find_element(
+        By.XPATH, './/input[@type="password"]')
+    password_field.send_keys(DISNEY_PASSWORD)
+    signin_button = driver.find_element(By.XPATH,
+                                        './/button[contains(@class, "btn-primary")]')
     signin_button.click()
 
     WebDriverWait(driver, TIMEOUT).until(
@@ -173,8 +177,8 @@ def get_availability(r_list, driver):
                 navigate_to_month(root, reservation.date)
 
                 # select date
-                day_section = root.find_element_by_xpath(
-                    f'.//*[text()=" {reservation.date.day} "]')
+                day_section = root.find_element(By.XPATH,
+                                                f'.//*[text()=" {reservation.date.day} "]')
                 day_section.click()
 
                 times = []
@@ -182,16 +186,16 @@ def get_availability(r_list, driver):
                     select_time(driver, requested_time)
 
                     # search for reservations
-                    search_button = root.find_element_by_xpath(
-                        './/finder-button')
+                    search_button = root.find_element(By.XPATH,
+                                                      './/finder-button')
                     search_button.click()
 
                     WebDriverWait(root, 10).until(
                         reservation_search_is_complete)
 
                     # add reservation options to results
-                    available_times = root.find_elements_by_xpath(
-                        './/*[@class="finder-button secondary ng-star-inserted"]')
+                    available_times = root.find_elements(By.XPATH,
+                                                         './/*[@class="finder-button secondary ng-star-inserted"]')
                     for available_time in available_times:
                         times.append(available_time.text)
 
@@ -217,9 +221,12 @@ def navigate_to_month(driver, requested_date):
     month_name_to_number = {value: key for key,
                             value in month_number_to_name.items()}
 
-    month_and_year = driver.find_element_by_css_selector(
-        '.month-and-year').text
-    current_month_name, current_year_text = month_and_year.split(' ')
+    month_and_year = driver.find_element(By.CLASS_NAME,
+                                         'month-and-year').text
+    current_month_name = driver.find_element(By.CLASS_NAME,
+                                             'month-name').text
+
+    current_year_text = month_and_year.replace(current_month_name, "")
     current_month = month_name_to_number[current_month_name]
     current_year = int(current_year_text)
 
@@ -249,14 +256,19 @@ def navigate_to_month(driver, requested_date):
 
 def select_time(driver, time):
     # get time dropdown's #shadow-root
-    dropdown_wrapper = driver.find_element_by_xpath('.//wdpr-single-select')
+    dropdown_wrapper = driver.find_element(By.XPATH, './/wdpr-single-select')
     root = expand_shadow_element(driver, dropdown_wrapper)
-    dropdown = root.find_element_by_id('custom-dropdown-button')
+    # shadow elements only support `By.CSS_SELECTOR` right now -
+    # https://giters.com/SeleniumHQ/selenium/issues/10107
+    dropdown = root.find_element(By.CSS_SELECTOR, '#custom-dropdown-button')
     dropdown.click()
 
     # no easy way to wait for an element in #shadow-root to be visible, so we sleep
     sleep(1)
-    dropdown_elements = root.find_elements_by_class_name('option-value-inner')
+    # shadow elements only support `By.CSS_SELECTOR` right now -
+    # https://giters.com/SeleniumHQ/selenium/issues/10107
+    dropdown_elements = root.find_elements(
+        By.CSS_SELECTOR, '.option-value-inner')
     for dropdown_element in dropdown_elements:
         if time in dropdown_element.text:
             dropdown_element.click()
@@ -268,10 +280,10 @@ def expand_shadow_element(driver, element):
 
 
 def reservation_search_is_complete(driver):
-    if len(driver.find_elements_by_css_selector('.reserve-title')) > 0:
+    if len(driver.find_elements(By.CLASS_NAME, 'reserve-title')) > 0:
         return True
 
-    if len(driver.find_elements_by_css_selector('.times-unavailable')) > 0:
+    if len(driver.find_elements(By.CLASS_NAME, 'times-unavailable')) > 0:
         return True
 
     return False
