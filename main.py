@@ -5,30 +5,35 @@ import json
 import os
 import sys
 import traceback
+import requests
 from time import sleep
 import smtplib
 
+from discord import Webhook, RequestsWebhookAdapter
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
-TIMEOUT = 10  # seconds
+TIMEOUT = 20  # seconds
 USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
-BASE_URL = 'https://disneyworld.disney.go.com'
+BASE_URL = 'https://disneyland.disney.go.com'
 
 EMAIL_USERNAME = os.getenv('EMAIL_USERNAME')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
 DISNEY_USERNAME = os.getenv('DISNEY_USERNAME')
 DISNEY_PASSWORD = os.getenv('DISNEY_PASSWORD')
 RECIPIENT_ADDRESS = os.getenv('RECIPIENT_ADDRESS')
-
+DISCORD_URL = os.getenv('DISCORD_URL')
+DISCORD_PRE_MSG = os.getenv('DISCORD_PRE_MSG')
 
 class Reservation:
-    def __init__(self, date, times):
+    def __init__(self, date, times, size):
         self.date = date
         self.times = times
+        self.size = size
 
 
 class Restaurant:
@@ -45,7 +50,7 @@ class Alert:
 
 
 def main():
-    if EMAIL_USERNAME is None or EMAIL_PASSWORD is None or EMAIL_USERNAME is None or DISNEY_PASSWORD is None or RECIPIENT_ADDRESS is None:
+    if DISNEY_PASSWORD is None or DISNEY_USERNAME is None:
         exit_with_failure(
             'missing required credentials in environment variables')
 
@@ -60,10 +65,14 @@ def main():
         f'user-agent={USER_AGENT}')
     options.add_argument("no-sandbox")
     options.add_argument("disable-dev-shm-usage")
+    options.add_argument("user-data-dir=data")
 
     driver = webdriver.Chrome(
         options=options)
 
+    driver.get(f'{BASE_URL}')
+    # This doesn't appear to be actually necessary
+    # prune_cookies(driver)
     try:
         login(driver)
     except:
@@ -78,10 +87,17 @@ def main():
 
     driver.close()
 
-    try:
-        send_alerts(alerts)
-    except:
-        exit_with_failure('a fatal error occured while sending alerts')
+    if EMAIL_USERNAME and EMAIL_PASSWORD:
+        try:
+            send_alerts(alerts)
+        except:
+            exit_with_failure('a fatal error occured while sending email alerts')
+
+    if DISCORD_URL:
+        try:
+            send_discord_msg(alerts)
+        except:
+            exit_with_failure('a fatal error occured while sending discord alerts')
 
     print_with_timestamp('script ended successfully')
 
@@ -128,7 +144,8 @@ def load_restaurant_reservations():
             for time in reservation['times']:
                 times.append(time)
 
-            reservations.append(Reservation(date, times))
+            size = reservation.get('size', 2)
+            reservations.append(Reservation(date, times, size))
 
         reservations.sort(key=lambda reservation: reservation.date)
         restaurants.append(Restaurant(name, link, reservations))
@@ -139,8 +156,22 @@ def load_restaurant_reservations():
 
     return restaurants
 
+def prune_cookies(driver):
+    cookies = driver.get_cookies()
+    for cookie in cookies:
+        expiry = cookie.get('expiry', 0)
+        if not expiry:
+            driver.delete_cookie(cookie["name"])
+            print(f"DEBUG deleted session cookie: {cookie['name']}")
+            continue
+        delta = datetime.fromtimestamp(expiry) - datetime.now()
+        print(f"DEBUG check cookie age: {delta}")
+        if delta.seconds < 300:
+            driver.delete_cookie(cookie["name"])
+            print(f"DEBUG deleted old cookie: {cookie['name']}")
 
 def login(driver):
+    print(f"DEBUG: Logging in")
     driver.get(f'{BASE_URL}/login')
 
     iframe = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
@@ -157,7 +188,6 @@ def login(driver):
 
     WebDriverWait(driver, TIMEOUT).until(
         lambda driver: driver.current_url == f'{BASE_URL}/')
-
 
 def get_availability(r_list, driver):
     results = []
@@ -180,6 +210,9 @@ def get_availability(r_list, driver):
                 day_section = root.find_element(By.XPATH,
                                                 f'.//*[text()=" {reservation.date.day} "]')
                 day_section.click()
+                
+                # select party size
+                set_party_size(driver, reservation.size) 
 
                 times = []
                 for requested_time in reservation.times:
@@ -201,7 +234,7 @@ def get_availability(r_list, driver):
 
                 if len(times) > 0:
                     available_reservations.append(
-                        Reservation(reservation.date, times))
+                        Reservation(reservation.date, times, reservation.size))
 
             except:
                 print(
@@ -253,6 +286,23 @@ def navigate_to_month(driver, requested_date):
     WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
         By.XPATH, f'.//*[text()="{month_number_to_name[requested_date.month]}"]')))
 
+def set_party_size(driver, size):
+    shadow_wrapper = driver.find_element_by_xpath('.//wdpr-counter')
+    shadow_section = expand_shadow_element(driver, shadow_wrapper)
+    current_size = shadow_section.find_element_by_id("nonEditableCounter").text
+    delta = size - int(current_size)
+    button_id = ""
+    if delta > 0:
+        button_id = "plusButton"
+    elif delta < 0:
+        button_id = "minusButton"
+    if button_id:
+        sleep(1)  # No good way to wait in shadow root?
+        for _ in range(abs(delta)):
+            button = WebDriverWait(shadow_section, TIMEOUT).until(
+                EC.element_to_be_clickable((By.ID, button_id)))
+            button.click()
+
 
 def select_time(driver, time):
     # get time dropdown's #shadow-root
@@ -288,6 +338,23 @@ def reservation_search_is_complete(driver):
 
     return False
 
+def get_alert_msg(alerts):
+    message = ''
+    for alert in alerts:
+        message += f'\n\n{alert.restaurant_name} has reservations open for'
+        for reservation in alert.reservations:
+            message += f'\n{reservation.size}\n{reservation.date.strftime("%d/%m/%Y")} at '
+            for time in reservation.times:
+                message += f'{time} '
+    return message
+
+def send_discord_msg(alerts):
+    if len(alerts) == 0:
+        return
+    msg = str(DISCORD_PRE_MSG)
+    webhook = Webhook.from_url(DISCORD_URL, adapter=RequestsWebhookAdapter())
+    msg += get_alert_msg(alerts)
+    webhook.send(msg)
 
 def send_alerts(alerts):
     if len(alerts) == 0:
@@ -295,18 +362,15 @@ def send_alerts(alerts):
 
     server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
     server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
-    message = ''
+    subject = 'Subject: Disney Reservation Found'
+    message = subject
 
-    for alert in alerts:
-        message += f'\n\n{alert.restaurant_name} has reservations open for'
-        for reservation in alert.reservations:
-            message += f'\n{reservation.date.strftime("%d/%m/%Y")} at '
-            for time in reservation.times:
-                message += f'{time} '
+    message += get_alert_msg(alerts)
 
-    if message != '':
+    if message != subject:
         try:
-            server.sendmail(EMAIL_USERNAME, [RECIPIENT_ADDRESS], message)
+            recipients = [a for a in RECIPIENT_ADDRESS.split(',')]
+            server.sendmail(EMAIL_USERNAME, recipients, message)
             print(message)
         except:
             print('unable to send:\n' + message)
