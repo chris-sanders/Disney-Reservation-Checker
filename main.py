@@ -62,7 +62,7 @@ def main():
     try:
         restaurants = load_restaurant_reservations()
     except:
-        exit_with_failure("a fatal error occured while loading reservations")
+        exit_with_failure("a fatal error occurred while loading reservations")
 
     options = Options()
     options.headless = True
@@ -73,20 +73,17 @@ def main():
 
     driver = webdriver.Chrome(options=options)
 
-    driver.get(f"{BASE_URL}")
-    # This doesn't appear to be actually necessary
-    # prune_cookies(driver)
     try:
         login(driver)
     except:
         exit_with_failure(
-            "a fatal error occured while logging into `MyDisneyExperience`"
+            "a fatal error occurred while logging into `MyDisneyExperience`"
         )
 
     try:
         alerts = get_availability(restaurants, driver)
     except:
-        exit_with_failure("a fatal error occured while checking for reservations")
+        exit_with_failure("a fatal error occurred while checking for reservations")
 
     driver.close()
 
@@ -94,13 +91,13 @@ def main():
         try:
             send_alerts(alerts)
         except:
-            exit_with_failure("a fatal error occured while sending email alerts")
+            exit_with_failure("a fatal error occurred while sending email alerts")
 
     if DISCORD_URL:
         try:
             send_discord_msg(alerts)
         except:
-            exit_with_failure("a fatal error occured while sending discord alerts")
+            exit_with_failure("a fatal error occurred while sending discord alerts")
 
     print_with_timestamp("script ended successfully")
 
@@ -134,7 +131,7 @@ def load_restaurant_reservations():
                 date = datetime.strptime(raw_date, "%d/%m/%Y")
                 date_diff = (date - today).days
                 if date_diff < 0:
-                    continue
+                    raise Exception
                 if date_diff > 60:
                     raise Exception
             except:
@@ -156,25 +153,10 @@ def load_restaurant_reservations():
 
     if should_raise_exception:
         raise Exception(
-            "one or more errors occured while parsing reservations from reservations.json"
+            "one or more errors occurred while parsing reservations from reservations.json"
         )
 
     return restaurants
-
-
-def prune_cookies(driver):
-    cookies = driver.get_cookies()
-    for cookie in cookies:
-        expiry = cookie.get("expiry", 0)
-        if not expiry:
-            driver.delete_cookie(cookie["name"])
-            print(f"DEBUG deleted session cookie: {cookie['name']}")
-            continue
-        delta = datetime.fromtimestamp(expiry) - datetime.now()
-        print(f"DEBUG check cookie age: {delta}")
-        if delta.seconds < 300:
-            driver.delete_cookie(cookie["name"])
-            print(f"DEBUG deleted old cookie: {cookie['name']}")
 
 
 def login(driver):
@@ -185,9 +167,15 @@ def login(driver):
         EC.presence_of_element_located((By.ID, "disneyid-iframe"))
     )
     driver.switch_to.frame(iframe)
-    email_field = driver.find_element(By.XPATH, './/input[@type="email"]')
+    email_field = WebDriverWait(driver, TIMEOUT).until(
+        EC.presence_of_element_located((By.XPATH, './/input[@type="email"]'))
+    )
+    # email_field = driver.find_element(By.XPATH, './/input[@type="email"]')
     email_field.send_keys(DISNEY_USERNAME)
-    password_field = driver.find_element(By.XPATH, './/input[@type="password"]')
+    password_field = WebDriverWait(driver, TIMEOUT).until(
+        EC.presence_of_element_located((By.XPATH, './/input[@type="password"]'))
+    )
+    # password_field = driver.find_element(By.XPATH, './/input[@type="password"]')
     password_field.send_keys(DISNEY_PASSWORD)
     signin_button = driver.find_element(
         By.XPATH, './/button[contains(@class, "btn-primary")]'
@@ -260,6 +248,7 @@ def get_availability(r_list, driver):
                 )
                 traceback.print_exc()
 
+        print(f"Found reservations: {available_reservations}")
         if len(available_reservations) > 0:
             results.append(Alert(restaurant.name, available_reservations))
 
@@ -319,9 +308,9 @@ def navigate_to_month(driver, requested_date):
 
 
 def set_party_size(driver, size):
-    shadow_wrapper = driver.find_element_by_xpath(".//wdpr-counter")
+    shadow_wrapper = driver.find_element(By.XPATH, ".//wdpr-counter")
     shadow_section = expand_shadow_element(driver, shadow_wrapper)
-    current_size = shadow_section.find_element_by_id("nonEditableCounter").text
+    current_size = shadow_section.find_element(By.ID, "nonEditableCounter").text
     delta = size - int(current_size)
     button_id = ""
     if delta > 0:
