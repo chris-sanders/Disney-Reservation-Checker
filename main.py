@@ -17,7 +17,7 @@ from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
-TIMEOUT = 20  # seconds
+TIMEOUT = 25  # seconds
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36"
 
 EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
