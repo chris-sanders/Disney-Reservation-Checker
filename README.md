@@ -1,7 +1,7 @@
 # Disney-Reservation-Checker
 
 ## FORK
-This repository was forked and updated to be working 2021-08-20
+This repository was forked and updated to be working 2022-08-05
 Website scraping is fragile and updates may be required to work as the website changes.
 
 Alterations from this fork:
