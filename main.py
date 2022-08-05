@@ -248,7 +248,6 @@ def get_availability(r_list, driver):
                 )
                 traceback.print_exc()
 
-        print(f"Found reservations: {available_reservations}")
         if len(available_reservations) > 0:
             results.append(Alert(restaurant.name, available_reservations))
 
