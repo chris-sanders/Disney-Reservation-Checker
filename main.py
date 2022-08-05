@@ -19,15 +19,20 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 TIMEOUT = 20  # seconds
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36"
-BASE_URL = "https://disneyland.disney.go.com"
 
 EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 DISNEY_USERNAME = os.getenv("DISNEY_USERNAME")
 DISNEY_PASSWORD = os.getenv("DISNEY_PASSWORD")
+DISNEY_LOCATION = os.getenv("DISNEY_LOCATION")
 RECIPIENT_ADDRESS = os.getenv("RECIPIENT_ADDRESS")
 DISCORD_URL = os.getenv("DISCORD_URL")
 DISCORD_PRE_MSG = os.getenv("DISCORD_PRE_MSG")
+
+if DISNEY_LOCATION == "disneyland":
+    BASE_URL = "https://disneyland.disney.go.com"
+else:
+    BASE_URL = "https://disneyworld.disney.go.com"
 
 
 class Reservation:
