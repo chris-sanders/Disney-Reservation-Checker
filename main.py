@@ -18,16 +18,17 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
 TIMEOUT = 20  # seconds
-USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
-BASE_URL = 'https://disneyland.disney.go.com'
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36"
+BASE_URL = "https://disneyland.disney.go.com"
 
-EMAIL_USERNAME = os.getenv('EMAIL_USERNAME')
-EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
-DISNEY_USERNAME = os.getenv('DISNEY_USERNAME')
-DISNEY_PASSWORD = os.getenv('DISNEY_PASSWORD')
-RECIPIENT_ADDRESS = os.getenv('RECIPIENT_ADDRESS')
-DISCORD_URL = os.getenv('DISCORD_URL')
-DISCORD_PRE_MSG = os.getenv('DISCORD_PRE_MSG')
+EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+DISNEY_USERNAME = os.getenv("DISNEY_USERNAME")
+DISNEY_PASSWORD = os.getenv("DISNEY_PASSWORD")
+RECIPIENT_ADDRESS = os.getenv("RECIPIENT_ADDRESS")
+DISCORD_URL = os.getenv("DISCORD_URL")
+DISCORD_PRE_MSG = os.getenv("DISCORD_PRE_MSG")
+
 
 class Reservation:
     def __init__(self, date, times, size):
@@ -51,39 +52,36 @@ class Alert:
 
 def main():
     if DISNEY_PASSWORD is None or DISNEY_USERNAME is None:
-        exit_with_failure(
-            'missing required credentials in environment variables')
+        exit_with_failure("missing required credentials in environment variables")
 
     try:
         restaurants = load_restaurant_reservations()
     except:
-        exit_with_failure('a fatal error occured while loading reservations')
+        exit_with_failure("a fatal error occured while loading reservations")
 
     options = Options()
     options.headless = True
-    options.add_argument(
-        f'user-agent={USER_AGENT}')
+    options.add_argument(f"user-agent={USER_AGENT}")
     options.add_argument("no-sandbox")
     options.add_argument("disable-dev-shm-usage")
     options.add_argument("user-data-dir=data")
 
-    driver = webdriver.Chrome(
-        options=options)
+    driver = webdriver.Chrome(options=options)
 
-    driver.get(f'{BASE_URL}')
+    driver.get(f"{BASE_URL}")
     # This doesn't appear to be actually necessary
     # prune_cookies(driver)
     try:
         login(driver)
     except:
         exit_with_failure(
-            'a fatal error occured while logging into `MyDisneyExperience`')
+            "a fatal error occured while logging into `MyDisneyExperience`"
+        )
 
     try:
         alerts = get_availability(restaurants, driver)
     except:
-        exit_with_failure(
-            'a fatal error occured while checking for reservations')
+        exit_with_failure("a fatal error occured while checking for reservations")
 
     driver.close()
 
@@ -91,15 +89,15 @@ def main():
         try:
             send_alerts(alerts)
         except:
-            exit_with_failure('a fatal error occured while sending email alerts')
+            exit_with_failure("a fatal error occured while sending email alerts")
 
     if DISCORD_URL:
         try:
             send_discord_msg(alerts)
         except:
-            exit_with_failure('a fatal error occured while sending discord alerts')
+            exit_with_failure("a fatal error occured while sending discord alerts")
 
-    print_with_timestamp('script ended successfully')
+    print_with_timestamp("script ended successfully")
 
 
 def print_with_timestamp(text):
@@ -116,19 +114,19 @@ def load_restaurant_reservations():
     should_raise_exception = False
     today = datetime.now()
 
-    with open('reservations.json', 'r') as file:
+    with open("reservations.json", "r") as file:
         data = json.load(file)
 
     restaurants = []
-    for restaurant in data['restaurants']:
-        name = restaurant['name']
-        link = restaurant['link']
+    for restaurant in data["restaurants"]:
+        name = restaurant["name"]
+        link = restaurant["link"]
 
         reservations = []
-        for reservation in restaurant['reservations']:
-            raw_date = reservation['date']
+        for reservation in restaurant["reservations"]:
+            raw_date = reservation["date"]
             try:
-                date = datetime.strptime(raw_date, '%d/%m/%Y')
+                date = datetime.strptime(raw_date, "%d/%m/%Y")
                 date_diff = (date - today).days
                 if date_diff < 0:
                     continue
@@ -136,15 +134,16 @@ def load_restaurant_reservations():
                     raise Exception
             except:
                 print(
-                    f'invalid date provided for {name}: {raw_date}; make sure you dates match the format `DD/MM/YYYY and is sixty or fewer days in the future')
+                    f"invalid date provided for {name}: {raw_date}; make sure you dates match the format `DD/MM/YYYY and is sixty or fewer days in the future"
+                )
                 should_raise_exception = True
                 continue
 
             times = []
-            for time in reservation['times']:
+            for time in reservation["times"]:
                 times.append(time)
 
-            size = reservation.get('size', 2)
+            size = reservation.get("size", 2)
             reservations.append(Reservation(date, times, size))
 
         reservations.sort(key=lambda reservation: reservation.date)
@@ -152,14 +151,16 @@ def load_restaurant_reservations():
 
     if should_raise_exception:
         raise Exception(
-            'one or more errors occured while parsing reservations from reservations.json')
+            "one or more errors occured while parsing reservations from reservations.json"
+        )
 
     return restaurants
+
 
 def prune_cookies(driver):
     cookies = driver.get_cookies()
     for cookie in cookies:
-        expiry = cookie.get('expiry', 0)
+        expiry = cookie.get("expiry", 0)
         if not expiry:
             driver.delete_cookie(cookie["name"])
             print(f"DEBUG deleted session cookie: {cookie['name']}")
@@ -170,24 +171,28 @@ def prune_cookies(driver):
             driver.delete_cookie(cookie["name"])
             print(f"DEBUG deleted old cookie: {cookie['name']}")
 
+
 def login(driver):
     print(f"DEBUG: Logging in")
-    driver.get(f'{BASE_URL}/login')
+    driver.get(f"{BASE_URL}/login")
 
-    iframe = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-        By.ID, "disneyid-iframe")))
+    iframe = WebDriverWait(driver, TIMEOUT).until(
+        EC.presence_of_element_located((By.ID, "disneyid-iframe"))
+    )
     driver.switch_to.frame(iframe)
     email_field = driver.find_element(By.XPATH, './/input[@type="email"]')
     email_field.send_keys(DISNEY_USERNAME)
-    password_field = driver.find_element(
-        By.XPATH, './/input[@type="password"]')
+    password_field = driver.find_element(By.XPATH, './/input[@type="password"]')
     password_field.send_keys(DISNEY_PASSWORD)
-    signin_button = driver.find_element(By.XPATH,
-                                        './/button[contains(@class, "btn-primary")]')
+    signin_button = driver.find_element(
+        By.XPATH, './/button[contains(@class, "btn-primary")]'
+    )
     signin_button.click()
 
     WebDriverWait(driver, TIMEOUT).until(
-        lambda driver: driver.current_url == f'{BASE_URL}/')
+        lambda driver: driver.current_url == f"{BASE_URL}/"
+    )
+
 
 def get_availability(r_list, driver):
     results = []
@@ -196,49 +201,58 @@ def get_availability(r_list, driver):
         available_reservations = []
         for reservation in restaurant.reservations:
             try:
-                root = WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-                    By.XPATH, '//finder-availability-modal')))
+                root = WebDriverWait(driver, TIMEOUT).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, "//finder-availability-modal")
+                    )
+                )
 
                 # open calendar
-                calendar_button = WebDriverWait(root, TIMEOUT).until(EC.element_to_be_clickable((
-                    By.XPATH, './/button[@class="calendar-button"]')))
+                calendar_button = WebDriverWait(root, TIMEOUT).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, './/button[@class="calendar-button"]')
+                    )
+                )
                 calendar_button.click()
 
                 navigate_to_month(root, reservation.date)
 
                 # select date
-                day_section = root.find_element(By.XPATH,
-                                                f'.//*[text()=" {reservation.date.day} "]')
+                day_section = root.find_element(
+                    By.XPATH, f'.//*[text()=" {reservation.date.day} "]'
+                )
                 day_section.click()
-                
+
                 # select party size
-                set_party_size(driver, reservation.size) 
+                set_party_size(driver, reservation.size)
 
                 times = []
                 for requested_time in reservation.times:
                     select_time(driver, requested_time)
 
                     # search for reservations
-                    search_button = root.find_element(By.XPATH,
-                                                      './/finder-button')
+                    search_button = root.find_element(By.XPATH, ".//finder-button")
                     search_button.click()
 
-                    WebDriverWait(root, 10).until(
-                        reservation_search_is_complete)
+                    WebDriverWait(root, 10).until(reservation_search_is_complete)
 
                     # add reservation options to results
-                    available_times = root.find_elements(By.XPATH,
-                                                         './/*[@class="finder-button secondary ng-star-inserted"]')
+                    available_times = root.find_elements(
+                        By.XPATH,
+                        './/*[@class="finder-button secondary ng-star-inserted"]',
+                    )
                     for available_time in available_times:
                         times.append(available_time.text)
 
                 if len(times) > 0:
                     available_reservations.append(
-                        Reservation(reservation.date, times, reservation.size))
+                        Reservation(reservation.date, times, reservation.size)
+                    )
 
             except:
                 print(
-                    f'failed to check available reservations for {restaurant.name} on {reservation.date.strftime("%d/%m/%Y")}')
+                    f'failed to check available reservations for {restaurant.name} on {reservation.date.strftime("%d/%m/%Y")}'
+                )
                 traceback.print_exc()
 
         if len(available_reservations) > 0:
@@ -248,16 +262,24 @@ def get_availability(r_list, driver):
 
 
 def navigate_to_month(driver, requested_date):
-    month_number_to_name = {1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May',
-                            6: 'June', 7: 'July', 8: 'August', 9: 'September', 10: 'October',
-                            11: 'November', 12: 'December'}
-    month_name_to_number = {value: key for key,
-                            value in month_number_to_name.items()}
+    month_number_to_name = {
+        1: "January",
+        2: "February",
+        3: "March",
+        4: "April",
+        5: "May",
+        6: "June",
+        7: "July",
+        8: "August",
+        9: "September",
+        10: "October",
+        11: "November",
+        12: "December",
+    }
+    month_name_to_number = {value: key for key, value in month_number_to_name.items()}
 
-    month_and_year = driver.find_element(By.CLASS_NAME,
-                                         'month-and-year').text
-    current_month_name = driver.find_element(By.CLASS_NAME,
-                                             'month-name').text
+    month_and_year = driver.find_element(By.CLASS_NAME, "month-and-year").text
+    current_month_name = driver.find_element(By.CLASS_NAME, "month-name").text
 
     current_year_text = month_and_year.replace(current_month_name, "")
     current_month = month_name_to_number[current_month_name]
@@ -280,14 +302,19 @@ def navigate_to_month(driver, requested_date):
 
     for _ in range(months_diff):
         next_month_icon = WebDriverWait(driver, TIMEOUT).until(
-            EC.element_to_be_clickable((By.XPATH, xpath)))
+            EC.element_to_be_clickable((By.XPATH, xpath))
+        )
         next_month_icon.click()
 
-    WebDriverWait(driver, TIMEOUT).until(EC.presence_of_element_located((
-        By.XPATH, f'.//*[text()="{month_number_to_name[requested_date.month]}"]')))
+    WebDriverWait(driver, TIMEOUT).until(
+        EC.presence_of_element_located(
+            (By.XPATH, f'.//*[text()="{month_number_to_name[requested_date.month]}"]')
+        )
+    )
+
 
 def set_party_size(driver, size):
-    shadow_wrapper = driver.find_element_by_xpath('.//wdpr-counter')
+    shadow_wrapper = driver.find_element_by_xpath(".//wdpr-counter")
     shadow_section = expand_shadow_element(driver, shadow_wrapper)
     current_size = shadow_section.find_element_by_id("nonEditableCounter").text
     delta = size - int(current_size)
@@ -300,25 +327,25 @@ def set_party_size(driver, size):
         sleep(1)  # No good way to wait in shadow root?
         for _ in range(abs(delta)):
             button = WebDriverWait(shadow_section, TIMEOUT).until(
-                EC.element_to_be_clickable((By.ID, button_id)))
+                EC.element_to_be_clickable((By.ID, button_id))
+            )
             button.click()
 
 
 def select_time(driver, time):
     # get time dropdown's #shadow-root
-    dropdown_wrapper = driver.find_element(By.XPATH, './/wdpr-single-select')
+    dropdown_wrapper = driver.find_element(By.XPATH, ".//wdpr-single-select")
     root = expand_shadow_element(driver, dropdown_wrapper)
     # shadow elements only support `By.CSS_SELECTOR` right now -
     # https://giters.com/SeleniumHQ/selenium/issues/10107
-    dropdown = root.find_element(By.CSS_SELECTOR, '#custom-dropdown-button')
+    dropdown = root.find_element(By.CSS_SELECTOR, "#custom-dropdown-button")
     dropdown.click()
 
     # no easy way to wait for an element in #shadow-root to be visible, so we sleep
     sleep(1)
     # shadow elements only support `By.CSS_SELECTOR` right now -
     # https://giters.com/SeleniumHQ/selenium/issues/10107
-    dropdown_elements = root.find_elements(
-        By.CSS_SELECTOR, '.option-value-inner')
+    dropdown_elements = root.find_elements(By.CSS_SELECTOR, ".option-value-inner")
     for dropdown_element in dropdown_elements:
         if time in dropdown_element.text:
             dropdown_element.click()
@@ -326,27 +353,31 @@ def select_time(driver, time):
 
 
 def expand_shadow_element(driver, element):
-    return driver.execute_script('return arguments[0].shadowRoot', element)
+    return driver.execute_script("return arguments[0].shadowRoot", element)
 
 
 def reservation_search_is_complete(driver):
-    if len(driver.find_elements(By.CLASS_NAME, 'reserve-title')) > 0:
+    if len(driver.find_elements(By.CLASS_NAME, "reserve-title")) > 0:
         return True
 
-    if len(driver.find_elements(By.CLASS_NAME, 'times-unavailable')) > 0:
+    if len(driver.find_elements(By.CLASS_NAME, "times-unavailable")) > 0:
         return True
 
     return False
 
+
 def get_alert_msg(alerts):
-    message = ''
+    message = ""
     for alert in alerts:
-        message += f'\n\n{alert.restaurant_name} has reservations open for'
+        message += f"\n\n{alert.restaurant_name} has reservations open for"
         for reservation in alert.reservations:
-            message += f'\n{reservation.size}\n{reservation.date.strftime("%d/%m/%Y")} at '
+            message += (
+                f'\n{reservation.size}\n{reservation.date.strftime("%d/%m/%Y")} at '
+            )
             for time in reservation.times:
-                message += f'{time} '
+                message += f"{time} "
     return message
+
 
 def send_discord_msg(alerts):
     if len(alerts) == 0:
@@ -356,28 +387,29 @@ def send_discord_msg(alerts):
     msg += get_alert_msg(alerts)
     webhook.send(msg)
 
+
 def send_alerts(alerts):
     if len(alerts) == 0:
         return
 
-    server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+    server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
     server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
-    subject = 'Subject: Disney Reservation Found'
+    subject = "Subject: Disney Reservation Found"
     message = subject
 
     message += get_alert_msg(alerts)
 
     if message != subject:
         try:
-            recipients = [a for a in RECIPIENT_ADDRESS.split(',')]
+            recipients = [a for a in RECIPIENT_ADDRESS.split(",")]
             server.sendmail(EMAIL_USERNAME, recipients, message)
             print(message)
         except:
-            print('unable to send:\n' + message)
+            print("unable to send:\n" + message)
             raise
 
     server.quit()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
