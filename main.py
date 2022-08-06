@@ -73,12 +73,16 @@ def main():
 
     driver = webdriver.Chrome(options=options)
 
-    try:
-        login(driver)
-    except:
-        exit_with_failure(
-            "a fatal error occurred while logging into `MyDisneyExperience`"
-        )
+    driver.get(f"{BASE_URL}/plan")
+    sleep(3)  # TODO wait for element on page
+    if "login" in driver.current_url:
+        # Only login if current session is expired
+        try:
+            login(driver)
+        except:
+            exit_with_failure(
+                "a fatal error occurred while logging into `MyDisneyExperience`"
+            )
 
     try:
         alerts = get_availability(restaurants, driver)
