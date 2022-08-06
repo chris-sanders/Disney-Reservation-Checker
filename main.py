@@ -17,7 +17,7 @@ from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
-TIMEOUT = 40  # seconds
+TIMEOUT = 10  # seconds
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36"
 
 EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
@@ -73,7 +73,7 @@ def main():
 
     driver = webdriver.Chrome(options=options)
 
-    driver.get(f"{BASE_URL}/plan")
+    driver.get(f"{BASE_URL}/profile")
     sleep(10)  # TODO wait for element on page
     if "login" in driver.current_url:
         # Only login if current session is expired
