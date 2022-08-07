@@ -207,7 +207,7 @@ def get_availability(r_list, driver):
         available_reservations = []
         for reservation in restaurant.reservations:
             try:
-                print(f"Current URL: {driver.current_url}")
+                print(f"Checking: {driver.current_url}")
                 root = WebDriverWait(driver, TIMEOUT).until(
                     EC.presence_of_element_located(
                         (By.XPATH, "//finder-availability-modal")
