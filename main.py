@@ -28,6 +28,7 @@ DISNEY_LOCATION = os.getenv("DISNEY_LOCATION")
 RECIPIENT_ADDRESS = os.getenv("RECIPIENT_ADDRESS")
 DISCORD_URL = os.getenv("DISCORD_URL")
 DISCORD_PRE_MSG = os.getenv("DISCORD_PRE_MSG")
+HA_URL = os.getenv("HA_URL")
 
 if DISNEY_LOCATION == "disneyland":
     BASE_URL = "https://disneyland.disney.go.com"
@@ -102,6 +103,14 @@ def main():
             send_discord_msg(alerts)
         except:
             exit_with_failure("a fatal error occurred while sending discord alerts")
+
+    if HA_URL:
+        try:
+            send_ha_notification(alerts)
+        except:
+            exit_with_failure(
+                "a fatal error occurred while sending home assistant alerts"
+            )
 
     print_with_timestamp("script ended successfully")
 
@@ -383,6 +392,13 @@ def send_discord_msg(alerts):
     webhook = Webhook.from_url(DISCORD_URL, adapter=RequestsWebhookAdapter())
     msg += get_alert_msg(alerts)
     webhook.send(msg)
+
+
+def send_ha_notification(alerts):
+    if len(alerts) == 0:
+        return
+    data = {"title": "Reservation found", "message": get_alert_msg(alerts)}
+    requests.post(HA_URL, json=data)
 
 
 def send_alerts(alerts):
